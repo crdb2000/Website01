@@ -1,34 +1,12 @@
 import { Suspense, useState, useRef, useLayoutEffect, useMemo, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useGLTF, Environment, useVideoTexture } from '@react-three/drei'
+import { useGLTF, Environment } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
 
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
-
-function VideoOverlay({ url, active }) {
-  const texture = useVideoTexture(url, { muted: true, loop: true, start: true })
-  const meshRef = useRef()
-  useFrame((state) => {
-    meshRef.current.position.copy(state.camera.position)
-    meshRef.current.quaternion.copy(state.camera.quaternion)
-    meshRef.current.translateZ(-1) 
-  })
-
-  return (
-    <mesh ref={meshRef} renderOrder={1}>
-      <planeGeometry args={[1, 1]} />
-      <meshBasicMaterial 
-        map={texture} 
-        transparent={true} 
-        opacity={active ? 0.25 : 0} 
-        depthTest={false} 
-      />
-    </mesh>
-  )
-}
 
 function GbaInstance({ index, url, onHover, active, ...props }) {
   const { scene } = useGLTF(url)
@@ -47,11 +25,10 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
         child.material.metalness = 0.2
         child.material.roughness = 0.4
         child.material.transparent = false 
-        child.renderOrder = active ? 2 : 0 
         if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
-  }, [clone, url, active])
+  }, [clone, url])
 
   const { posY, factor } = useSpring({
     posY: active ? 0.35 : 0,
@@ -78,9 +55,9 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
 
     clone.traverse((child) => {
       if (child.isMesh) {
+        child.material.color.lerpColors(WHITE, FILL_COLOR, f)
+        child.material.emissive.lerpColors(WHITE, FILL_COLOR, f)
         child.material.emissiveIntensity = THREE.MathUtils.lerp(restIntensity, activePulse, f)
-        const dimFactor = (!active && props.anyActive) ? 0.5 : 1
-        child.material.color.lerpColors(WHITE, FILL_COLOR, f).multiplyScalar(dimFactor)
       }
     })
   })
@@ -113,23 +90,18 @@ export default function App() {
     '/Web_Cart_05_V1.glb', '/Web_Cart_06_V1.glb', '/Web_Cart_07_V1.glb', '/Web_Cart_08_V1.glb'
   ]
 
-  const moveLeft = () => {
-    setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
-  }
-  const moveRight = () => {
-    setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
-  }
+  const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
+  const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
 
-  // KEYBOARD NAVIGATION LOGIC
+  // Keyboard navigation
   useEffect(() => {
-    const handleKeyDown = (event) => {
-      if (event.key === 'ArrowLeft') moveLeft()
-      if (event.key === 'ArrowRight') moveRight()
+    const handleKeyDown = (e) => {
+      if (e.key === 'ArrowLeft') moveLeft()
+      if (e.key === 'ArrowRight') moveRight()
     }
     window.addEventListener('keydown', handleKeyDown)
-    // Clean up listener when component unmounts
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, []) // Empty array means this runs once on load
+  }, [])
 
   const activeVideo = useMemo(() => {
     if (hoveredIndex === 1) return "/WebBG_LBL_01_NewLarge.mp4"
@@ -154,9 +126,16 @@ export default function App() {
 
       <div className="bg-container">
         <div className="bg-layer base-bg" />
-        <video key={activeVideo} className="bg-layer" muted loop playsInline autoPlay style={{ opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }}>
-          <source src={activeVideo} type="video/mp4" />
-        </video>
+        {/* Fixed Video Logic: Using src instead of children to prevent unmounting/flashing */}
+        <video 
+          className="bg-layer" 
+          muted 
+          loop 
+          playsInline 
+          autoPlay 
+          src={activeVideo}
+          style={{ opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }}
+        />
       </div>
 
       <div className="ui-overlay">
@@ -173,7 +152,6 @@ export default function App() {
         >
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             {activeVideo && <VideoOverlay url={activeVideo} active={hoveredIndex !== null} />}
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance 
@@ -181,7 +159,6 @@ export default function App() {
                     index={i} 
                     url={url} 
                     active={hoveredIndex === i} 
-                    anyActive={hoveredIndex !== null} 
                     onHover={setHoveredIndex} 
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
