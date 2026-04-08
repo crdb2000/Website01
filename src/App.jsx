@@ -8,8 +8,9 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-function GbaInstance({ index, ...props }) {
-  const { scene } = useGLTF('/Cartridge_Web_04.glb')
+// Updated GbaInstance to take a 'url' prop
+function GbaInstance({ index, url, ...props }) {
+  const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
   const [hovered, setHovered] = useState(false)
   const groupRef = useRef()
@@ -28,7 +29,7 @@ function GbaInstance({ index, ...props }) {
         if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
-  }, [clone])
+  }, [clone, url]) // Re-run if url changes
 
   const { posY, factor } = useSpring({
     posY: hovered ? 0.35 : 0,
@@ -88,7 +89,16 @@ function GbaInstance({ index, ...props }) {
 }
 
 export default function App() {
-  const count = 7
+  // Define your order here. Second item is your new model.
+  const cartridgeModels = [
+    '/Cartridge_Web_04.glb',
+    '/Web_Cart_02_V1.glb',     // The new one
+    '/Cartridge_Web_04.glb',
+    '/Cartridge_Web_04.glb',
+    '/Cartridge_Web_04.glb',
+    '/Cartridge_Web_04.glb',
+    '/Cartridge_Web_04.glb'
+  ]
   
   return (
     <>
@@ -99,10 +109,11 @@ export default function App() {
 
       <div style={{ width: '100vw', height: '100vh' }}>
         <Canvas 
-          gl={{ antialias: true }}
+          shadows
+          dpr={[1, 2]} // Performance optimization for high-res screens
+          gl={{ antialias: true, powerPreference: "high-performance" }}
           camera={{ position: [4.5, 0.6, 4.5], fov: 10 }}
         >
-          {/* Sets a solid background color inside the Canvas */}
           <color attach="background" args={['#050505']} />
 
           <Suspense fallback={null}>
@@ -113,17 +124,18 @@ export default function App() {
              />
              
              <group position={[0.75, -0.1, 0.4]}>
-                {Array.from({ length: count }).map((_, i) => (
+                {cartridgeModels.map((url, i) => (
                   <GbaInstance 
                     key={i} 
                     index={i} 
+                    url={url} // Passing the specific file to each instance
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
                 ))}
              </group>
           </Suspense>
 
-          <EffectComposer>
+          <EffectComposer multisampling={0}>
             <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={5.0} />
             <Noise opacity={0.02} />
           </EffectComposer>
