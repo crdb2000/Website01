@@ -143,7 +143,7 @@ export default function App() {
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              
              {/* Centering adjustment for mobile */}
-             <group position={isMobile ? [-0.25, -0.1, 1] : [0.9, -0.1, 0.4]}>
+             <group position={isMobile ? [0.5, -0.1, 0.4] : [0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance key={i} index={i} url={url} onHover={setHoveredIndex} position={[i * -0.28, 0, i * -0.15]} />
                 ))}
