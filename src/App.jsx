@@ -135,15 +135,15 @@ export default function App() {
              If desktop: FOV is 10 (zoomed in).
           */
           camera={{ 
-            position: isMobile ? [5, 1, 8] : [5, 0.8, 5], 
-            fov: isMobile ? 20 : 10 
+            position: isMobile ? [4, 0.8, 8] : [5, 0.8, 5], 
+            fov: isMobile ? 17 : 10 
           }} 
         >
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              
              {/* Centering adjustment for mobile */}
-             <group position={isMobile ? [1.2, -0.2, 0.4] : [0.9, -0.1, 0.4]}>
+             <group position={isMobile ? [0.9, -0.1, 0.4] : [0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance key={i} index={i} url={url} onHover={setHoveredIndex} position={[i * -0.28, 0, i * -0.15]} />
                 ))}
