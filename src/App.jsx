@@ -135,8 +135,8 @@ export default function App() {
              If desktop: FOV is 10 (zoomed in).
           */
           camera={{ 
-            position: isMobile ? [4, 0.8, 5] : [5, 0.8, 5], 
-            fov: isMobile ? 15 : 10 
+            position: isMobile ? [4, 1.5, 3.5] : [5, 0.8, 5], 
+            fov: isMobile ? 20 : 10 
           }} 
         >
           <Suspense fallback={null}>
