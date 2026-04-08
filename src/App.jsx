@@ -25,8 +25,7 @@ function GbaInstance({ index, url, onHover, ...props }) {
         child.material.emissive.set(WHITE)
         child.material.metalness = 0.2
         child.material.roughness = 0.4
-        // This ensures the material doesn't try to blend weirdly with the background
-        child.material.transparent = false
+        child.material.transparent = false // Keep opaque to prevent edge bleeding
         if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
@@ -46,9 +45,10 @@ function GbaInstance({ index, url, onHover, ...props }) {
     lastHovered.current = hovered
 
     const localTime = t - startTime.current
-    // Capped intensity: High HDR values (> 1.0) on transparent backgrounds cause the "ghosting"
-    const activePulse = 2.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 1.5)
-    const restIntensity = 1.0 
+    
+    // RESTORED: High emission pulse for that glowing look
+    const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
+    const restIntensity = 2.5 
 
     if (groupRef.current) {
       groupRef.current.position.y = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -122,7 +122,8 @@ export default function App() {
           camera={{ position: [5, 0.8, 5], fov: 10 }} 
         >
           <Suspense fallback={null}>
-             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={20} rotation={[0, Math.PI * (200 / 180), 0]} />
+             {/* INCREASED Environment Intensity (35) to brighten dark textures */}
+             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              
              <group position={[0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
@@ -132,11 +133,10 @@ export default function App() {
           </Suspense>
 
           <EffectComposer multisampling={0}>
-            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={1.5} />
-            <Noise opacity={0.01} />
+            {/* BALANCED Exposure (3.0) - bright enough for textures, low enough to stop artifacts */}
+            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
+            <Noise opacity={0.015} />
           </EffectComposer>
-
-          {/* ContactShadows removed to solve ghosting entirely */}
         </Canvas>
       </div>
     </>
