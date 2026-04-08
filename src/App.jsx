@@ -14,7 +14,9 @@ const WHITE = new THREE.Color('#ffffff')
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
   const [hasLoaded, setHasLoaded] = useState(false)
+  
   useEffect(() => { if (active && !hasLoaded) setHasLoaded(true) }, [active, hasLoaded])
+  
   useEffect(() => {
     if (hasLoaded && videoRef.current) {
       if (active) videoRef.current.play().catch(() => {})
@@ -30,14 +32,14 @@ function VideoLayer({ src, active }) {
       muted loop playsInline
       style={{ 
         opacity: active ? 1 : 0, 
-        zIndex: active ? -1 : -2, // Push videos behind the canvas
+        zIndex: active ? 2 : 1, // Active video stacks on top of others
         pointerEvents: 'none' 
       }} 
     />
   )
 }
 
-function GbaInstance({ index, url, onHover, active, ...props }) {
+function GbaInstance({ index, url, onHover, onClick, active, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
   const groupRef = useRef()
@@ -91,7 +93,12 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh onPointerOver={(e) => { e.stopPropagation(); onHover(index) }} onPointerOut={() => onHover(null)}>
+        <mesh 
+          onPointerOver={(e) => { e.stopPropagation(); onHover(index) }} 
+          onPointerOut={() => onHover(null)}
+          // NEW: Click to navigate
+          onClick={(e) => { e.stopPropagation(); onClick() }}
+        >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -142,8 +149,8 @@ function Home() {
   }, [hoveredIndex])
 
   return (
-    <div className="page-container">
-      {/* Background Section (Moved behind Canvas with z-index) */}
+    <div className="home-wrapper">
+      {/* BACKGROUND (Bottom Layer) */}
       <div className="bg-container">
         <div className="bg-layer base-bg" />
         {cartridges.map((item, i) => (
@@ -151,7 +158,7 @@ function Home() {
         ))}
       </div>
 
-      {/* UI Overlay Section */}
+      {/* UI OVERLAY (Top Layer) */}
       <div className="ui-overlay">
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
         <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={handleSelect}>
@@ -160,8 +167,8 @@ function Home() {
         <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
 
-      {/* 3D Section */}
-      <div className="canvas-wrapper">
+      {/* CANVAS (Middle Layer) */}
+      <div className="canvas-container">
         <Canvas 
           key={isMobile ? 'mobile' : 'desktop'}
           dpr={[1, 2]} 
@@ -174,7 +181,9 @@ function Home() {
                 {cartridges.map((item, i) => (
                   <GbaInstance 
                     key={i} index={i} url={item.model} 
-                    active={hoveredIndex === i} onHover={setHoveredIndex}
+                    active={hoveredIndex === i} 
+                    onHover={setHoveredIndex}
+                    onClick={handleSelect} // Click the 3D model to enter
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
                 ))}
@@ -212,23 +221,32 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Helvetica', sans-serif; }
         
-        .page-container { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-        .canvas-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-        .canvas-wrapper canvas { pointer-events: auto; }
+        /* The Wrapper ensures the sandwich works */
+        .home-wrapper { width: 100vw; height: 100vh; position: relative; }
 
-        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -5; pointer-events: none; }
+        /* LAYER 1: Backgrounds */
+        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
-        .base-bg { z-index: -10; background-image: url('/bg.png'); background-size: cover; background-position: center; }
+        .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         
+        /* LAYER 2: 3D Canvas */
+        .canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .canvas-container canvas { pointer-events: auto; }
+
+        /* LAYER 3: UI Buttons */
         .ui-overlay {
           position: absolute;
-          top: 0; left: 0; width: 100%; height: 100%;
+          bottom: 60px;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 100%;
+          max-width: 500px;
           z-index: 100;
           pointer-events: none;
           display: flex;
-          align-items: flex-end; /* Original bottom alignment */
+          align-items: center;
           justify-content: space-between;
-          padding: 0 30px 60px 30px; /* Original 60px margin */
+          padding: 0 40px;
           box-sizing: border-box;
         }
 
