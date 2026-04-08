@@ -8,7 +8,6 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-// Added onHover prop to GbaInstance
 function GbaInstance({ index, url, onHover, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
@@ -75,11 +74,11 @@ function GbaInstance({ index, url, onHover, ...props }) {
           onPointerOver={(e) => {
             e.stopPropagation()
             setHovered(true)
-            onHover(index) // Tell parent which one is hovered
+            onHover(index) 
           }} 
           onPointerOut={() => {
             setHovered(false)
-            onHover(null) // Tell parent nothing is hovered
+            onHover(null) 
           }}
         >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
@@ -109,10 +108,9 @@ export default function App() {
     '/Web_Cart_08_V1.glb'
   ]
 
-  // Map the index to the correct background image name
+  // Logic to determine which background image to show
   const getBgImage = () => {
     if (hoveredIndex === null) return "/bg.png"
-    // Pads number with a zero (e.g. 1 becomes 01)
     const num = String(hoveredIndex + 1).padStart(2, '0')
     return `/Web_BG_${num}.png`
   }
@@ -127,16 +125,14 @@ export default function App() {
           overflow: hidden; 
           background-color: #000;
         }
-
         .bg-container {
           position: absolute;
           top: 0;
           left: 0;
           width: 100%;
           height: 100%;
-          z-index: -1;
+          z-index: 1;
         }
-
         .bg-layer {
           position: absolute;
           top: 0;
@@ -146,16 +142,17 @@ export default function App() {
           background-size: cover;
           background-position: center;
           background-repeat: no-repeat;
-          transition: background-image 0.4s ease-in-out, opacity 0.4s ease-in-out;
+          /* This creates the smooth fade between images */
+          transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out;
         }
       `}</style>
 
       {/* Background Layers */}
       <div className="bg-container">
         {/* Base layer (Always bg.png) */}
-        <div className="bg-layer" style={{ backgroundImage: `url('/bg.png')`, z-index: 1 }} />
+        <div className="bg-layer" style={{ backgroundImage: `url('/bg.png')`, zIndex: 1 }} />
         
-        {/* Hover layer (Fades in on top) */}
+        {/* Hover layer (Fades in over the base layer) */}
         <div 
           className="bg-layer" 
           style={{ 
@@ -186,7 +183,7 @@ export default function App() {
                     key={i} 
                     index={i} 
                     url={url} 
-                    onHover={setHoveredIndex} // Pass the state function down
+                    onHover={setHoveredIndex} 
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
                 ))}
