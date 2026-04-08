@@ -48,7 +48,17 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
     const restIntensity = 2.5 
 
     if (groupRef.current) {
-      groupRef.current.position.y = (Math.sin(t * 1.5 + index) * 0.012) * f
+      // IDLE WAVE LOGIC:
+      // Math.sin(t * speed + index * offset) creates the wave
+      // 0.04 is the height of the wave (roughly 10px in this 3D scale)
+      const idleWave = Math.sin(t * 2 + index * 0.8) * 0.04
+      
+      // We still want the extra "erratic" movement when hovered
+      const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
+      
+      groupRef.current.position.y = idleWave + activeExtra
+      
+      // Rotations still only apply when hovered (f)
       groupRef.current.rotation.x = (Math.cos(t * 1 + index) * 0.015) * f
       groupRef.current.rotation.z = (Math.sin(t * 1 + index) * 0.01) * f
     }
@@ -111,87 +121,21 @@ export default function App() {
       <style>{`
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: sans-serif; }
-        
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        
-        .bg-layer { 
-          position: absolute; 
-          top: 0; left: 0; 
-          width: 100%; height: 100%; 
-          background-size: cover; 
-          background-position: center; 
-          background-repeat: no-repeat; 
-          transition: opacity 0.8s ease-in-out;
-        }
-
+        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 1; opacity: 1; }
         .dynamic-bg { z-index: 2; }
-
-        .ui-overlay {
-          position: absolute;
-          top: 0; left: 0;
-          width: 100%; height: 100%;
-          z-index: 20;
-          pointer-events: none;
-          display: flex;
-          box-sizing: border-box;
-          padding: 0 40px;
-          /* Default: Mobile layout (bottom) */
-          align-items: flex-end;
-          justify-content: space-between;
-          padding-bottom: 60px;
-        }
-
-        .nav-button {
-          width: 65px; height: 65px;
-          border-radius: 50%;
-          background: rgba(255, 255, 255, 0.08);
-          backdrop-filter: blur(15px);
-          -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(255, 255, 255, 0.15);
-          color: white; font-size: 24px; font-weight: bold;
-          display: flex; align-items: center; justify-content: center;
-          cursor: pointer; pointer-events: auto;
-          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
-          user-select: none;
-          line-height: 0; padding-bottom: 3px;
-        }
-
-        .nav-button:hover {
-          background: rgba(255, 255, 255, 0.15);
-          border: 1px solid rgba(255, 255, 255, 0.4);
-          transform: scale(1.1);
-        }
-
+        .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; display: flex; box-sizing: border-box; padding: 0 40px; align-items: flex-end; justify-content: space-between; padding-bottom: 60px; }
+        .nav-button { width: 65px; height: 65px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); color: white; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; line-height: 0; padding-bottom: 3px; }
+        .nav-button:hover { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); transform: scale(1.1); }
         .nav-button:active { transform: scale(0.9); }
-
-        /* DESKTOP RE-POSITIONING */
-        @media (min-width: 769px) {
-          .ui-overlay {
-            align-items: center; /* Move to vertical middle */
-            padding-bottom: 0;
-          }
-          .nav-button {
-            width: 80px; height: 80px; /* Slightly larger on desktop */
-            font-size: 30px;
-          }
-          /* This moves the hover effect back to scale(1.1) specifically for desktop */
-          .nav-button:hover { transform: scale(1.1); }
-          .nav-button:active { transform: scale(0.95); }
-        }
+        @media (min-width: 769px) { .ui-overlay { align-items: center; padding-bottom: 0; } .nav-button { width: 80px; height: 80px; font-size: 30px; } .nav-button:hover { transform: scale(1.1); } .nav-button:active { transform: scale(0.95); } }
       `}</style>
 
       <div className="bg-container">
         <div className="bg-layer base-bg" style={{ backgroundImage: `url('/bg.png')` }} />
         {cartridgeModels.map((_, i) => (
-          <div 
-            key={i}
-            className="bg-layer dynamic-bg" 
-            style={{ 
-              backgroundImage: `url('/Web_BG_${String(i + 1).padStart(2, '0')}.png')`, 
-              opacity: hoveredIndex === i ? 1 : 0 
-            }} 
-          />
+          <div key={i} className="bg-layer dynamic-bg" style={{ backgroundImage: `url('/Web_BG_${String(i + 1).padStart(2, '0')}.png')`, opacity: hoveredIndex === i ? 1 : 0 }} />
         ))}
       </div>
 
@@ -205,10 +149,7 @@ export default function App() {
           key={isMobile ? 'mobile' : 'desktop'}
           dpr={[1, 2]} 
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
-          camera={{ 
-            position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], 
-            fov: isMobile ? 25 : 10 
-          }} 
+          camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }} 
         >
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
