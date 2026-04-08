@@ -8,16 +8,13 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-// This component handles an individual video layer
+// Individual video layer component for cross-fading
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
   const [hasLoaded, setHasLoaded] = useState(false)
 
-  // Only start loading the video when it's either active or we've started loading it
   useEffect(() => {
-    if (active && !hasLoaded) {
-      setHasLoaded(true)
-    }
+    if (active && !hasLoaded) setHasLoaded(true)
   }, [active, hasLoaded])
 
   useEffect(() => {
@@ -25,7 +22,6 @@ function VideoLayer({ src, active }) {
       if (active) {
         videoRef.current.play().catch(() => {})
       } else {
-        // Pause and reset when not in use to save CPU
         videoRef.current.pause()
       }
     }
@@ -36,9 +32,7 @@ function VideoLayer({ src, active }) {
       ref={videoRef}
       src={hasLoaded ? src : undefined}
       className="bg-layer"
-      muted
-      loop
-      playsInline
+      muted loop playsInline
       style={{ 
         opacity: active ? 1 : 0, 
         zIndex: active ? 2 : 1,
@@ -125,25 +119,19 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  const cartridgeModels = [
-    '/Cartridge_Web_04.glb', '/Web_Cart_02_V1.glb', '/Web_Cart_03_V1.glb', '/Web_Cart_04_V1.glb',
-    '/Web_Cart_05_V1.glb', '/Web_Cart_06_V1.glb', '/Web_Cart_07_V1.glb', '/Web_Cart_08_V1.glb'
+  // MASTER CONFIGURATION: 7 Items mapped to your specific video files
+  const cartridges = [
+    { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4' },
+    { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4' },
+    { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4' },
+    { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4' },
+    { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4' },
+    { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4' },
+    { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4' }
   ]
 
-  // Array of your video sources
-  const videoSources = useMemo(() => [
-    '/Web_BG_01.mp4',
-    '/WebBG_LBL_01_NewLarge.mp4', // Your high-res 2nd cart
-    '/Web_BG_03.mp4',
-    '/Web_BG_04.mp4',
-    '/Web_BG_05.mp4',
-    '/Web_BG_06.mp4',
-    '/Web_BG_07.mp4',
-    '/Web_BG_08.mp4'
-  ], [])
-
-  const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
-  const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
+  const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
+  const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -170,12 +158,10 @@ export default function App() {
       `}</style>
 
       <div className="bg-container">
-        {/* Static Base */}
         <div className="bg-layer base-bg" />
-        
-        {/* Dynamic Video Layers */}
-        {videoSources.map((src, i) => (
-          <VideoLayer key={src} src={src} active={hoveredIndex === i} />
+        {/* Generate video layers based on config */}
+        {cartridges.map((item, i) => (
+          <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
         ))}
       </div>
 
@@ -194,11 +180,11 @@ export default function App() {
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-                {cartridgeModels.map((url, i) => (
+                {cartridges.map((item, i) => (
                   <GbaInstance 
                     key={i} 
                     index={i} 
-                    url={url} 
+                    url={item.model} 
                     active={hoveredIndex === i} 
                     onHover={setHoveredIndex} 
                     position={[i * -0.28, 0, i * -0.15]} 
