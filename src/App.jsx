@@ -8,6 +8,46 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
+// This component handles an individual video layer
+function VideoLayer({ src, active }) {
+  const videoRef = useRef()
+  const [hasLoaded, setHasLoaded] = useState(false)
+
+  // Only start loading the video when it's either active or we've started loading it
+  useEffect(() => {
+    if (active && !hasLoaded) {
+      setHasLoaded(true)
+    }
+  }, [active, hasLoaded])
+
+  useEffect(() => {
+    if (hasLoaded && videoRef.current) {
+      if (active) {
+        videoRef.current.play().catch(() => {})
+      } else {
+        // Pause and reset when not in use to save CPU
+        videoRef.current.pause()
+      }
+    }
+  }, [active, hasLoaded])
+
+  return (
+    <video
+      ref={videoRef}
+      src={hasLoaded ? src : undefined}
+      className="bg-layer"
+      muted
+      loop
+      playsInline
+      style={{ 
+        opacity: active ? 1 : 0, 
+        zIndex: active ? 2 : 1,
+        pointerEvents: 'none' 
+      }}
+    />
+  )
+}
+
 function GbaInstance({ index, url, onHover, active, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
@@ -90,10 +130,21 @@ export default function App() {
     '/Web_Cart_05_V1.glb', '/Web_Cart_06_V1.glb', '/Web_Cart_07_V1.glb', '/Web_Cart_08_V1.glb'
   ]
 
+  // Array of your video sources
+  const videoSources = useMemo(() => [
+    '/Web_BG_01.mp4',
+    '/WebBG_LBL_01_NewLarge.mp4', // Your high-res 2nd cart
+    '/Web_BG_03.mp4',
+    '/Web_BG_04.mp4',
+    '/Web_BG_05.mp4',
+    '/Web_BG_06.mp4',
+    '/Web_BG_07.mp4',
+    '/Web_BG_08.mp4'
+  ], [])
+
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
 
-  // Keyboard navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowLeft') moveLeft()
@@ -102,12 +153,6 @@ export default function App() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [])
-
-  const activeVideo = useMemo(() => {
-    if (hoveredIndex === 1) return "/WebBG_LBL_01_NewLarge.mp4"
-    if (hoveredIndex !== null) return `/Web_BG_${String(hoveredIndex + 1).padStart(2, '0')}.mp4`
-    return null
-  }, [hoveredIndex])
   
   return (
     <>
@@ -116,7 +161,7 @@ export default function App() {
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: sans-serif; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
-        .base-bg { z-index: 1; background-image: url('/bg.png'); background-size: cover; background-position: center; }
+        .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; display: flex; box-sizing: border-box; padding: 0 40px; align-items: flex-end; justify-content: space-between; padding-bottom: 60px; }
         .nav-button { width: 65px; height: 65px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); color: white; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; line-height: 0; padding-bottom: 3px; }
         .nav-button:hover { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); transform: scale(1.1); }
@@ -125,17 +170,13 @@ export default function App() {
       `}</style>
 
       <div className="bg-container">
+        {/* Static Base */}
         <div className="bg-layer base-bg" />
-        {/* Fixed Video Logic: Using src instead of children to prevent unmounting/flashing */}
-        <video 
-          className="bg-layer" 
-          muted 
-          loop 
-          playsInline 
-          autoPlay 
-          src={activeVideo}
-          style={{ opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }}
-        />
+        
+        {/* Dynamic Video Layers */}
+        {videoSources.map((src, i) => (
+          <VideoLayer key={src} src={src} active={hoveredIndex === i} />
+        ))}
       </div>
 
       <div className="ui-overlay">
