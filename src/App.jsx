@@ -48,17 +48,15 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
     const restIntensity = 2.5 
 
     if (groupRef.current) {
-      // IDLE WAVE LOGIC:
-      // Math.sin(t * speed + index * offset) creates the wave
-      // 0.04 is the height of the wave (roughly 10px in this 3D scale)
-      const idleWave = Math.sin(t * 2 + index * 0.8) * 0.04
+      // UPDATED IDLE WAVE:
+      // Speed reduced from 2 to 1 (Half speed)
+      // Amplitude reduced from 0.04 to 0.02 (Half height / ~5px)
+      const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       
-      // We still want the extra "erratic" movement when hovered
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
       
       groupRef.current.position.y = idleWave + activeExtra
       
-      // Rotations still only apply when hovered (f)
       groupRef.current.rotation.x = (Math.cos(t * 1 + index) * 0.015) * f
       groupRef.current.rotation.z = (Math.sin(t * 1 + index) * 0.01) * f
     }
