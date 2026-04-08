@@ -6,18 +6,12 @@ import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
 import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
 
+// --- DESIGN CONSTANTS ---
+const NEW_WHITE = new THREE.Color('#eae5e3') 
 const FILL_COLOR = new THREE.Color('#eae6e4') 
-const WHITE = new THREE.Color('#ffffff')
+const DARK_THEME = '#212020' 
 
-const CARTRIDGE_DATA = [
-  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel' },
-  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud' },
-  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125' },
-  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice' },
-  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further' }
-]
+// --- SHARED COMPONENTS ---
 
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
@@ -47,8 +41,8 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     clone.traverse((child) => {
       if (child.isMesh) {
         child.material = child.material.clone()
-        child.material.color.set(WHITE)
-        child.material.emissive.set(WHITE)
+        child.material.color.set(NEW_WHITE)
+        child.material.emissive.set(NEW_WHITE)
         child.material.metalness = 0.2
         child.material.roughness = 0.4
       }
@@ -80,8 +74,8 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
 
     clone.traverse((child) => {
       if (child.isMesh) {
-        child.material.color.lerpColors(WHITE, FILL_COLOR, f)
-        child.material.emissive.lerpColors(WHITE, FILL_COLOR, f)
+        child.material.color.lerpColors(NEW_WHITE, FILL_COLOR, f)
+        child.material.emissive.lerpColors(NEW_WHITE, FILL_COLOR, f)
         child.material.emissiveIntensity = THREE.MathUtils.lerp(restIntensity, activePulse, f)
       }
     })
@@ -91,10 +85,8 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
         <mesh 
-          // Disable Hover on Mobile, allow on Desktop
           onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
           onPointerOut={() => { if(!isMobile) onHover(null); }} 
-          // Click works on both (On mobile, first click selects, second click enters)
           onClick={(e) => { e.stopPropagation(); onClick(index); }}
         >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
@@ -105,6 +97,20 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     </animated.group>
   )
 }
+
+// --- DATA ---
+
+const CARTRIDGE_DATA = [
+  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel' },
+  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud' },
+  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125' },
+  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave' },
+  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends' },
+  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice' },
+  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further' }
+]
+
+// --- PAGES ---
 
 function Home() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
@@ -123,12 +129,8 @@ function Home() {
   const handleSelect = (index) => {
     const targetIndex = index !== undefined ? index : hoveredIndex;
     if (targetIndex !== null) {
-      // On mobile: if tapping a new one, select it. If tapping already active one, enter.
-      if (isMobile && hoveredIndex !== targetIndex) {
-        setHoveredIndex(targetIndex)
-      } else {
-        navigate(`/case-study/${CARTRIDGE_DATA[targetIndex].id}`)
-      }
+      if (isMobile && hoveredIndex !== targetIndex) setHoveredIndex(targetIndex)
+      else navigate(`/case-study/${CARTRIDGE_DATA[targetIndex].id}`)
     }
   }
 
@@ -166,12 +168,8 @@ function Home() {
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (
                   <GbaInstance 
-                    key={i} index={i} url={item.model} 
-                    active={hoveredIndex === i} 
-                    isMobile={isMobile}
-                    onHover={setHoveredIndex} 
-                    onClick={handleSelect} 
-                    position={[i * -0.28, 0, i * -0.15]} 
+                    key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
+                    onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
                   />
                 ))}
              </group>
@@ -198,12 +196,22 @@ function CaseStudy() {
   )
 }
 
+// --- MAIN APP ---
+
 export default function App() {
   return (
     <Router>
       <style>{`
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Helvetica', sans-serif; }
+        
+        html, body, #root { 
+          width: 100%; height: 100%; overflow: hidden; 
+          background-color: ${DARK_THEME}; 
+          font-family: degular, sans-serif; 
+          font-weight: 600; 
+          color: #eae5e3;
+        }
+
         .home-wrapper { width: 100vw; height: 100vh; position: relative; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
@@ -212,49 +220,38 @@ export default function App() {
         .canvas-container canvas { pointer-events: auto; }
 
         .ui-overlay {
-          position: absolute;
-          bottom: 100px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 100%;
-          max-width: 450px;
-          z-index: 100;
-          pointer-events: none;
-          display: flex;
-          align-items: center; 
-          justify-content: space-between;
-          padding: 0 40px;
-          box-sizing: border-box;
+          position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
+          width: 100%; max-width: 450px; z-index: 100; pointer-events: none;
+          display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box;
         }
 
         .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
 
         .nav-button {
           width: 55px; height: 55px; border-radius: 50%;
-          background: rgba(255, 255, 255, 0.1);
+          background: rgba(234, 229, 227, 0.1); 
           backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: white; font-size: 20px; font-weight: bold;
+          border: 1px solid rgba(234, 229, 227, 0.15);
+          color: #eae5e3; font-size: 20px;
           cursor: pointer; transition: all 0.2s; user-select: none;
         }
 
         .select-button {
-          height: 45px;
-          padding: 0 35px; border-radius: 40px;
-          background: rgba(255, 255, 255, 0.05);
+          height: 45px; padding: 0 35px; border-radius: 40px;
+          background: rgba(234, 229, 227, 0.05);
           backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(255, 255, 255, 0.1);
-          color: rgba(255, 255, 255, 0.3);
-          font-weight: 900; letter-spacing: 2px; font-size: 13px;
+          border: 1px solid rgba(234, 229, 227, 0.1);
+          color: rgba(234, 229, 227, 0.3);
+          font-weight: 600; letter-spacing: 2px; font-size: 13px;
           cursor: pointer; transition: all 0.3s; user-select: none;
         }
 
-        .select-button.active { background: white; color: black; transform: scale(1.1); }
+        .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
 
-        .case-study-page { width: 100vw; height: 100vh; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .home-btn { position: fixed; top: 40px; border: 1px solid #333; padding: 10px 20px; border-radius: 20px; color: #777; text-decoration: none; font-size: 12px; transition: 0.2s; z-index: 100; }
-        .home-btn:hover { border-color: #fff; color: #fff; }
+        .case-study-page { width: 100vw; height: 100vh; background: ${DARK_THEME}; color: #eae5e3; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .home-btn { position: fixed; top: 40px; border: 1px solid rgba(234, 229, 227, 0.2); padding: 10px 20px; border-radius: 20px; color: #eae5e3; text-decoration: none; font-size: 12px; transition: 0.2s; z-index: 100; }
+        .home-btn:hover { background: #eae5e3; color: ${DARK_THEME}; }
         .case-content h1 { font-size: 60px; letter-spacing: -2px; text-transform: uppercase; }
 
         @media (min-width: 769px) {
