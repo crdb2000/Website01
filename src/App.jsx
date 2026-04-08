@@ -89,30 +89,27 @@ function GbaInstance({ index, url, ...props }) {
 }
 
 export default function App() {
-  // Define your order here. Second item is your new model.
+  // Updated list with all 8 of your cartridges in order
   const cartridgeModels = [
     '/Cartridge_Web_04.glb',
-    '/Web_Cart_02_V1.glb',     // The new one
-    '/Cartridge_Web_04.glb',
-    '/Cartridge_Web_04.glb',
-    '/Cartridge_Web_04.glb',
-    '/Cartridge_Web_04.glb',
-    '/Cartridge_Web_04.glb'
+    '/Web_Cart_02_V1.glb',
+    '/Web_Cart_03_V1.glb',
+    '/Web_Cart_04_V1.glb',
+    '/Web_Cart_05_V1.glb',
+    '/Web_Cart_06_V1.glb',
+    '/Web_Cart_07_V1.glb',
+    '/Web_Cart_08_V1.glb'
   ]
   
   return (
     <>
-      <style>{`
-        * { margin: 0; padding: 0; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #111; }
-      `}</style>
-
-      <div style={{ width: '100vw', height: '100vh' }}>
-        <Canvas 
+      {/* ... keep style and div wrapper ... */}
+      <Canvas 
           shadows
-          dpr={[1, 2]} // Performance optimization for high-res screens
+          dpr={[1, 2]} 
           gl={{ antialias: true, powerPreference: "high-performance" }}
-          camera={{ position: [4.5, 0.6, 4.5], fov: 10 }}
+          /* I slightly adjusted the camera position to fit 8 items better */
+          camera={{ position: [5, 0.8, 5], fov: 10 }} 
         >
           <color attach="background" args={['#050505']} />
 
@@ -123,26 +120,16 @@ export default function App() {
                 rotation={[0, Math.PI * (200 / 180), 0]}
              />
              
-             <group position={[0.75, -0.1, 0.4]}>
+             {/* I adjusted the group position to [0.9, -0.1, 0.4] to keep the longer line centered */}
+             <group position={[0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance 
                     key={i} 
                     index={i} 
-                    url={url} // Passing the specific file to each instance
+                    url={url} 
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
                 ))}
              </group>
           </Suspense>
-
-          <EffectComposer multisampling={0}>
-            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={5.0} />
-            <Noise opacity={0.02} />
-          </EffectComposer>
-
-          <ContactShadows position={[0, -0.4, 0]} opacity={0.4} scale={20} blur={3} far={5} />
-        </Canvas>
-      </div>
-    </>
-  )
-}
+          {/* ... keep the rest of your code ... */}
