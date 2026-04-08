@@ -39,24 +39,16 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
   useFrame((state) => {
     const t = state.clock.getElapsedTime()
     const f = factor.get()
-
     if (active && !lastActive.current) startTime.current = t
     lastActive.current = active
-
     const localTime = t - startTime.current
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
     const restIntensity = 2.5 
 
     if (groupRef.current) {
-      // UPDATED IDLE WAVE:
-      // Speed reduced from 2 to 1 (Half speed)
-      // Amplitude reduced from 0.04 to 0.02 (Half height / ~5px)
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
-      
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
-      
       groupRef.current.position.y = idleWave + activeExtra
-      
       groupRef.current.rotation.x = (Math.cos(t * 1 + index) * 0.015) * f
       groupRef.current.rotation.z = (Math.sin(t * 1 + index) * 0.01) * f
     }
@@ -73,10 +65,7 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh 
-          onPointerOver={(e) => { e.stopPropagation(); onHover(index) }} 
-          onPointerOut={() => onHover(null)}
-        >
+        <mesh onPointerOver={(e) => { e.stopPropagation(); onHover(index) }} onPointerOut={() => onHover(null)}>
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -89,6 +78,7 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
 export default function App() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const videoRef = useRef(null)
 
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -96,23 +86,32 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  // Dynamic Video Logic
+  useEffect(() => {
+    if (videoRef.current) {
+      if (hoveredIndex === 1) {
+        // Specifically for the second cartridge
+        videoRef.current.src = "/WebBG_LBL_01_Low.mp4"
+        videoRef.current.play().catch(() => {})
+      } else if (hoveredIndex !== null) {
+        // Fallback for other cartridges if you add more later
+        const num = String(hoveredIndex + 1).padStart(2, '0')
+        videoRef.current.src = `/Web_BG_${num}.mp4`
+        videoRef.current.play().catch(() => {})
+      } else {
+        // No hover, pause video
+        videoRef.current.pause()
+      }
+    }
+  }, [hoveredIndex])
+
   const cartridgeModels = [
-    '/Cartridge_Web_04.glb',
-    '/Web_Cart_02_V1.glb',
-    '/Web_Cart_03_V1.glb',
-    '/Web_Cart_04_V1.glb',
-    '/Web_Cart_05_V1.glb',
-    '/Web_Cart_06_V1.glb',
-    '/Web_Cart_07_V1.glb',
-    '/Web_Cart_08_V1.glb'
+    '/Cartridge_Web_04.glb', '/Web_Cart_02_V1.glb', '/Web_Cart_03_V1.glb', '/Web_Cart_04_V1.glb',
+    '/Web_Cart_05_V1.glb', '/Web_Cart_06_V1.glb', '/Web_Cart_07_V1.glb', '/Web_Cart_08_V1.glb'
   ]
 
-  const moveLeft = () => {
-    setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
-  }
-  const moveRight = () => {
-    setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
-  }
+  const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
+  const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
   
   return (
     <>
@@ -120,9 +119,8 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: sans-serif; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; transition: opacity 0.8s ease-in-out; }
-        .base-bg { z-index: 1; opacity: 1; }
-        .dynamic-bg { z-index: 2; }
+        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
+        .base-bg { z-index: 1; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; display: flex; box-sizing: border-box; padding: 0 40px; align-items: flex-end; justify-content: space-between; padding-bottom: 60px; }
         .nav-button { width: 65px; height: 65px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); color: white; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; line-height: 0; padding-bottom: 3px; }
         .nav-button:hover { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); transform: scale(1.1); }
@@ -131,10 +129,16 @@ export default function App() {
       `}</style>
 
       <div className="bg-container">
-        <div className="bg-layer base-bg" style={{ backgroundImage: `url('/bg.png')` }} />
-        {cartridgeModels.map((_, i) => (
-          <div key={i} className="bg-layer dynamic-bg" style={{ backgroundImage: `url('/Web_BG_${String(i + 1).padStart(2, '0')}.png')`, opacity: hoveredIndex === i ? 1 : 0 }} />
-        ))}
+        <div className="bg-layer base-bg" />
+        <video
+          ref={videoRef}
+          className="bg-layer"
+          muted
+          loop
+          playsInline
+          /* Only shows video if we have a hovered index */
+          style={{ opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }}
+        />
       </div>
 
       <div className="ui-overlay">
