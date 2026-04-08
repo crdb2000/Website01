@@ -105,13 +105,6 @@ export default function App() {
   const moveRight = () => {
     setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
   }
-
-  // Pre-calculate image URL to prevent logic flickering
-  const activeBg = useMemo(() => {
-    if (hoveredIndex === null) return null
-    const num = String(hoveredIndex + 1).padStart(2, '0')
-    return `/Web_BG_${num}.png`
-  }, [hoveredIndex])
   
   return (
     <>
@@ -128,16 +121,12 @@ export default function App() {
           background-size: cover; 
           background-position: center; 
           background-repeat: no-repeat; 
+          /* SMOOTH FADE TRANSITION */
+          transition: opacity 0.8s ease-in-out;
         }
 
-        /* The base layer doesn't transition, it's just there */
-        .base-bg { z-index: 1; }
-
-        /* The dynamic layer only transitions opacity */
-        .dynamic-bg { 
-          z-index: 2; 
-          transition: opacity 0.4s ease-out; 
-        }
+        .base-bg { z-index: 1; opacity: 1; }
+        .dynamic-bg { z-index: 2; }
 
         .ui-overlay {
           position: absolute;
@@ -168,31 +157,24 @@ export default function App() {
 
         .nav-button:active { transform: scale(0.85); background: rgba(255, 255, 255, 0.3); }
 
-        /* Hidden Preloader */
-        .preloader { position: absolute; width: 0; height: 0; overflow: hidden; z-index: -100; visibility: hidden; }
-
         @media (min-width: 769px) { .nav-button { display: none; } }
       `}</style>
 
-      {/* 1. IMAGE PRELOADER: Forces browser to keep all 8 BGs in cache */}
-      <div className="preloader">
-        {cartridgeModels.map((_, i) => (
-          <img key={i} src={`/Web_BG_${String(i + 1).padStart(2, '0')}.png`} alt="" />
-        ))}
-      </div>
-
       <div className="bg-container">
-        {/* Layer 1: Static base image */}
+        {/* Layer 1: The permanent base image */}
         <div className="bg-layer base-bg" style={{ backgroundImage: `url('/bg.png')` }} />
         
-        {/* Layer 2: Dynamic image that only changes opacity */}
-        <div 
-          className="bg-layer dynamic-bg" 
-          style={{ 
-            backgroundImage: activeBg ? `url('${activeBg}')` : 'none', 
-            opacity: activeBg ? 1 : 0 
-          }} 
-        />
+        {/* Layer 2: 8 separate layers that cross-fade into each other */}
+        {cartridgeModels.map((_, i) => (
+          <div 
+            key={i}
+            className="bg-layer dynamic-bg" 
+            style={{ 
+              backgroundImage: `url('/Web_BG_${String(i + 1).padStart(2, '0')}.png')`, 
+              opacity: hoveredIndex === i ? 1 : 0 
+            }} 
+          />
+        ))}
       </div>
 
       <div className="ui-overlay">
