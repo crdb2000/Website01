@@ -83,6 +83,15 @@ function GbaInstance({ index, url, onHover, ...props }) {
 
 export default function App() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
+  
+  // This state will track the window width to update the camera live
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+
+  useLayoutEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 768)
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [])
 
   const cartridgeModels = [
     '/Cartridge_Web_04.glb',
@@ -117,15 +126,24 @@ export default function App() {
 
       <div style={{ width: '100vw', height: '100vh', position: 'relative', zIndex: 10 }}>
         <Canvas 
+          key={isMobile ? 'mobile' : 'desktop'} // Forces a camera refresh when switching modes
           dpr={[1, 2]} 
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
-          camera={{ position: [5, 0.8, 5], fov: 10 }} 
+          /* 
+             DYNAMIC CAMERA:
+             If mobile: FOV is 30 (zoomed out) and position is pushed back.
+             If desktop: FOV is 10 (zoomed in).
+          */
+          camera={{ 
+            position: isMobile ? [8, 1, 8] : [5, 0.8, 5], 
+            fov: isMobile ? 30 : 10 
+          }} 
         >
           <Suspense fallback={null}>
-             {/* INCREASED Environment Intensity (35) to brighten dark textures */}
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              
-             <group position={[0.9, -0.1, 0.4]}>
+             {/* Centering adjustment for mobile */}
+             <group position={isMobile ? [1.2, -0.2, 0.4] : [0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance key={i} index={i} url={url} onHover={setHoveredIndex} position={[i * -0.28, 0, i * -0.15]} />
                 ))}
@@ -133,7 +151,6 @@ export default function App() {
           </Suspense>
 
           <EffectComposer multisampling={0}>
-            {/* BALANCED Exposure (3.0) - bright enough for textures, low enough to stop artifacts */}
             <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
             <Noise opacity={0.015} />
           </EffectComposer>
