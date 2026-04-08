@@ -8,7 +8,6 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-// Updated GbaInstance to take a 'url' prop
 function GbaInstance({ index, url, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
@@ -29,7 +28,7 @@ function GbaInstance({ index, url, ...props }) {
         if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
-  }, [clone, url]) // Re-run if url changes
+  }, [clone, url])
 
   const { posY, factor } = useSpring({
     posY: hovered ? 0.35 : 0,
@@ -89,7 +88,6 @@ function GbaInstance({ index, url, ...props }) {
 }
 
 export default function App() {
-  // Updated list with all 8 of your cartridges in order
   const cartridgeModels = [
     '/Cartridge_Web_04.glb',
     '/Web_Cart_02_V1.glb',
@@ -103,12 +101,16 @@ export default function App() {
   
   return (
     <>
-      {/* ... keep style and div wrapper ... */}
-      <Canvas 
+      <style>{`
+        * { margin: 0; padding: 0; }
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #111; }
+      `}</style>
+
+      <div style={{ width: '100vw', height: '100vh' }}>
+        <Canvas 
           shadows
           dpr={[1, 2]} 
           gl={{ antialias: true, powerPreference: "high-performance" }}
-          /* I slightly adjusted the camera position to fit 8 items better */
           camera={{ position: [5, 0.8, 5], fov: 10 }} 
         >
           <color attach="background" args={['#050505']} />
@@ -120,7 +122,6 @@ export default function App() {
                 rotation={[0, Math.PI * (200 / 180), 0]}
              />
              
-             {/* I adjusted the group position to [0.9, -0.1, 0.4] to keep the longer line centered */}
              <group position={[0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance 
@@ -132,4 +133,15 @@ export default function App() {
                 ))}
              </group>
           </Suspense>
-          {/* ... keep the rest of your code ... */}
+
+          <EffectComposer multisampling={0}>
+            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={5.0} />
+            <Noise opacity={0.02} />
+          </EffectComposer>
+
+          <ContactShadows position={[0, -0.4, 0]} opacity={0.4} scale={20} blur={3} far={5} />
+        </Canvas>
+      </div>
+    </>
+  )
+}
