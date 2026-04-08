@@ -119,9 +119,7 @@ function Home() {
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
   
   const handleSelect = () => {
-    if (hoveredIndex !== null) {
-      navigate(`/case-study/${cartridges[hoveredIndex].id}`)
-    }
+    if (hoveredIndex !== null) navigate(`/case-study/${cartridges[hoveredIndex].id}`)
   }
 
   useEffect(() => {
@@ -135,7 +133,7 @@ function Home() {
   }, [hoveredIndex])
 
   return (
-    <div style={{ width: '100%', height: '100%' }}>
+    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
       <div className="bg-container">
         <div className="bg-layer base-bg" />
         {cartridges.map((item, i) => (
@@ -145,20 +143,18 @@ function Home() {
 
       <div className="ui-overlay">
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
-        
-        {/* CENTER SELECT BUTTON */}
         <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={handleSelect}>
           SELECT
         </div>
-
         <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
 
       <Canvas 
         key={isMobile ? 'mobile' : 'desktop'}
         dpr={[1, 2]} 
-        gl={{ antialias: true, alpha: true }} 
+        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
         camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }} 
+        style={{ width: '100%', height: '100%' }}
       >
         <Suspense fallback={null}>
            <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
@@ -206,18 +202,18 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Helvetica', sans-serif; }
         
-        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         
         .ui-overlay {
           position: absolute;
-          bottom: 60px; /* Anchored to bottom for both mobile/web */
+          bottom: 60px;
           left: 50%;
           transform: translateX(-50%);
           width: 100%;
           max-width: 500px;
-          z-index: 20;
+          z-index: 50; /* Above the canvas */
           pointer-events: none;
           display: flex;
           align-items: center;
@@ -226,6 +222,8 @@ export default function App() {
           box-sizing: border-box;
         }
 
+        .nav-button, .select-button { pointer-events: auto; }
+
         .nav-button {
           width: 60px; height: 60px; border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
@@ -233,36 +231,28 @@ export default function App() {
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: white; font-size: 20px; font-weight: bold;
           display: flex; align-items: center; justify-content: center;
-          cursor: pointer; pointer-events: auto;
-          transition: all 0.2s; user-select: none;
-          line-height: 0;
+          cursor: pointer; transition: all 0.2s; user-select: none;
         }
 
         .select-button {
-          padding: 12px 40px;
-          border-radius: 40px;
+          padding: 12px 40px; border-radius: 40px;
           background: rgba(255, 255, 255, 0.05);
           backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
           border: 1px solid rgba(255, 255, 255, 0.1);
           color: rgba(255, 255, 255, 0.3);
           font-weight: 900; letter-spacing: 2px; font-size: 14px;
-          cursor: pointer; pointer-events: auto;
-          transition: all 0.3s;
-          user-select: none;
+          cursor: pointer; transition: all 0.3s; user-select: none;
         }
 
         .select-button.active {
-          background: white;
-          color: black;
-          transform: scale(1.1);
+          background: white; color: black; transform: scale(1.1);
           box-shadow: 0 10px 30px rgba(255,255,255,0.2);
         }
 
         .nav-button:active, .select-button:active { transform: scale(0.9); }
 
-        /* Case Study Styling */
-        .case-study-page { width: 100%; height: 100%; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        .home-btn { position: fixed; top: 40px; border: 1px solid #333; padding: 10px 20px; border-radius: 20px; color: #777; text-decoration: none; font-size: 12px; transition: 0.2s; }
+        .case-study-page { width: 100vw; height: 100vh; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .home-btn { position: fixed; top: 40px; border: 1px solid #333; padding: 10px 20px; border-radius: 20px; color: #777; text-decoration: none; font-size: 12px; transition: 0.2s; z-index: 100; }
         .home-btn:hover { border-color: #fff; color: #fff; }
         .case-content h1 { font-size: 80px; letter-spacing: -3px; }
       `}</style>
