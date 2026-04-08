@@ -4,41 +4,27 @@ import { useGLTF, Environment } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
 
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-// Individual video layer component for cross-fading
+// --- SHARED COMPONENTS ---
+
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
   const [hasLoaded, setHasLoaded] = useState(false)
-
-  useEffect(() => {
-    if (active && !hasLoaded) setHasLoaded(true)
-  }, [active, hasLoaded])
-
+  useEffect(() => { if (active && !hasLoaded) setHasLoaded(true) }, [active, hasLoaded])
   useEffect(() => {
     if (hasLoaded && videoRef.current) {
-      if (active) {
-        videoRef.current.play().catch(() => {})
-      } else {
-        videoRef.current.pause()
-      }
+      if (active) videoRef.current.play().catch(() => {})
+      else videoRef.current.pause()
     }
   }, [active, hasLoaded])
 
   return (
-    <video
-      ref={videoRef}
-      src={hasLoaded ? src : undefined}
-      className="bg-layer"
-      muted loop playsInline
-      style={{ 
-        opacity: active ? 1 : 0, 
-        zIndex: active ? 2 : 1,
-        pointerEvents: 'none' 
-      }}
-    />
+    <video ref={videoRef} src={hasLoaded ? src : undefined} className="bg-layer" muted loop playsInline
+      style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
   )
 }
 
@@ -53,16 +39,13 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
     clone.traverse((child) => {
       if (child.isMesh) {
         child.material = child.material.clone()
-        child.material.dithering = true
         child.material.color.set(WHITE)
         child.material.emissive.set(WHITE)
         child.material.metalness = 0.2
         child.material.roughness = 0.4
-        child.material.transparent = false 
-        if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
-  }, [clone, url])
+  }, [clone])
 
   const { posY, factor } = useSpring({
     posY: active ? 0.35 : 0,
@@ -109,9 +92,12 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
   )
 }
 
-export default function App() {
+// --- PAGES ---
+
+function Home() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const navigate = useNavigate()
 
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -119,47 +105,39 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // MASTER CONFIGURATION: 7 Items mapped to your specific video files
   const cartridges = [
-    { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4' },
-    { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4' },
-    { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4' },
-    { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4' },
-    { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4' },
-    { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4' },
-    { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4' }
+    { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'reel' },
+    { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'lbl' },
+    { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f1' },
+    { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sw' },
+    { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'holds' },
+    { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dnd' },
+    { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further' }
   ]
 
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
+  
+  const handleSelect = () => {
+    if (hoveredIndex !== null) {
+      navigate(`/case-study/${cartridges[hoveredIndex].id}`)
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'ArrowLeft') moveLeft()
       if (e.key === 'ArrowRight') moveRight()
+      if (e.key === 'Enter') handleSelect()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [])
-  
-  return (
-    <>
-      <style>{`
-        * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: sans-serif; }
-        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
-        .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
-        .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; display: flex; box-sizing: border-box; padding: 0 40px; align-items: flex-end; justify-content: space-between; padding-bottom: 60px; }
-        .nav-button { width: 65px; height: 65px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); color: white; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; line-height: 0; padding-bottom: 3px; }
-        .nav-button:hover { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); transform: scale(1.1); }
-        .nav-button:active { transform: scale(0.9); }
-        @media (min-width: 769px) { .ui-overlay { align-items: center; padding-bottom: 0; } .nav-button { width: 80px; height: 80px; font-size: 30px; } .nav-button:hover { transform: scale(1.1); } .nav-button:active { transform: scale(0.95); } }
-      `}</style>
+  }, [hoveredIndex])
 
+  return (
+    <div style={{ width: '100%', height: '100%' }}>
       <div className="bg-container">
         <div className="bg-layer base-bg" />
-        {/* Generate video layers based on config */}
         {cartridges.map((item, i) => (
           <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
         ))}
@@ -167,37 +145,132 @@ export default function App() {
 
       <div className="ui-overlay">
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
+        
+        {/* CENTER SELECT BUTTON */}
+        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={handleSelect}>
+          SELECT
+        </div>
+
         <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
 
-      <div style={{ width: '100vw', height: '100vh', position: 'relative', zIndex: 10 }}>
-        <Canvas 
-          key={isMobile ? 'mobile' : 'desktop'}
-          dpr={[1, 2]} 
-          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
-          camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }} 
-        >
-          <Suspense fallback={null}>
-             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-                {cartridges.map((item, i) => (
-                  <GbaInstance 
-                    key={i} 
-                    index={i} 
-                    url={item.model} 
-                    active={hoveredIndex === i} 
-                    onHover={setHoveredIndex} 
-                    position={[i * -0.28, 0, i * -0.15]} 
-                  />
-                ))}
-             </group>
-          </Suspense>
-          <EffectComposer multisampling={0}>
-            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
-            <Noise opacity={0.015} />
-          </EffectComposer>
-        </Canvas>
+      <Canvas 
+        key={isMobile ? 'mobile' : 'desktop'}
+        dpr={[1, 2]} 
+        gl={{ antialias: true, alpha: true }} 
+        camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }} 
+      >
+        <Suspense fallback={null}>
+           <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
+           <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+              {cartridges.map((item, i) => (
+                <GbaInstance 
+                  key={i} 
+                  index={i} 
+                  url={item.model} 
+                  active={hoveredIndex === i} 
+                  onHover={setHoveredIndex}
+                  position={[i * -0.28, 0, i * -0.15]} 
+                />
+              ))}
+           </group>
+        </Suspense>
+        <EffectComposer multisampling={0}>
+          <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
+          <Noise opacity={0.015} />
+        </EffectComposer>
+      </Canvas>
+    </div>
+  )
+}
+
+function CaseStudy() {
+  const { id } = useParams()
+  return (
+    <div className="case-study-page">
+      <Link to="/" className="home-btn">BACK TO COLLECTION</Link>
+      <div className="case-content">
+        <h1>{id.toUpperCase()}</h1>
+        <p>Deep dive content coming soon...</p>
       </div>
-    </>
+    </div>
+  )
+}
+
+// --- MAIN APP ---
+
+export default function App() {
+  return (
+    <Router>
+      <style>{`
+        * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Helvetica', sans-serif; }
+        
+        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
+        .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
+        
+        .ui-overlay {
+          position: absolute;
+          bottom: 60px; /* Anchored to bottom for both mobile/web */
+          left: 50%;
+          transform: translateX(-50%);
+          width: 100%;
+          max-width: 500px;
+          z-index: 20;
+          pointer-events: none;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 40px;
+          box-sizing: border-box;
+        }
+
+        .nav-button {
+          width: 60px; height: 60px; border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white; font-size: 20px; font-weight: bold;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; pointer-events: auto;
+          transition: all 0.2s; user-select: none;
+          line-height: 0;
+        }
+
+        .select-button {
+          padding: 12px 40px;
+          border-radius: 40px;
+          background: rgba(255, 255, 255, 0.05);
+          backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
+          border: 1px solid rgba(255, 255, 255, 0.1);
+          color: rgba(255, 255, 255, 0.3);
+          font-weight: 900; letter-spacing: 2px; font-size: 14px;
+          cursor: pointer; pointer-events: auto;
+          transition: all 0.3s;
+          user-select: none;
+        }
+
+        .select-button.active {
+          background: white;
+          color: black;
+          transform: scale(1.1);
+          box-shadow: 0 10px 30px rgba(255,255,255,0.2);
+        }
+
+        .nav-button:active, .select-button:active { transform: scale(0.9); }
+
+        /* Case Study Styling */
+        .case-study-page { width: 100%; height: 100%; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+        .home-btn { position: fixed; top: 40px; border: 1px solid #333; padding: 10px 20px; border-radius: 20px; color: #777; text-decoration: none; font-size: 12px; transition: 0.2s; }
+        .home-btn:hover { border-color: #fff; color: #fff; }
+        .case-content h1 { font-size: 80px; letter-spacing: -3px; }
+      `}</style>
+
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/case-study/:id" element={<CaseStudy />} />
+      </Routes>
+    </Router>
   )
 }
