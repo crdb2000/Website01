@@ -1,4 +1,4 @@
-import { Suspense, useState, useRef, useLayoutEffect, useMemo, useEffect } from 'react'
+import { Suspense, useState, useRef, useLayoutEffect, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF, Environment } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
@@ -30,7 +30,6 @@ function GbaInstance({ index, url, onHover, active, ...props }) {
     })
   }, [clone, url])
 
-  // The lift animation now reacts to the 'active' prop from parent
   const { posY, factor } = useSpring({
     posY: active ? 0.35 : 0,
     factor: active ? 1 : 0,
@@ -100,11 +99,13 @@ export default function App() {
     '/Web_Cart_08_V1.glb'
   ]
 
-  // Navigation functions
-  const nextItem = () => {
+  // LOGIC FIXED: 
+  // Because cartridges use negative X/Z positions, 
+  // higher index = left, lower index = right.
+  const moveLeft = () => {
     setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
   }
-  const prevItem = () => {
+  const moveRight = () => {
     setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
   }
 
@@ -123,7 +124,6 @@ export default function App() {
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out; }
         
-        /* Navigation UI */
         .ui-overlay {
           position: absolute;
           top: 0;
@@ -133,21 +133,23 @@ export default function App() {
           z-index: 20;
           pointer-events: none;
           display: flex;
-          align-items: center;
+          align-items: center; /* Vertically Centered */
           justify-content: space-between;
           padding: 0 20px;
           box-sizing: border-box;
         }
 
         .nav-button {
-          width: 60px;
-          height: 60px;
+          width: 55px;
+          height: 55px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(10px);
+          backdrop-filter: blur(12px);
+          -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: white;
-          font-size: 24px;
+          font-size: 20px;
+          font-weight: bold;
           display: flex;
           align-items: center;
           justify-content: center;
@@ -155,28 +157,33 @@ export default function App() {
           pointer-events: auto;
           transition: all 0.2s;
           user-select: none;
+          /* MOVED DOWN 30px */
+          transform: translateY(30px);
+          /* Perfect centering for < and > */
+          line-height: 0;
+          padding-bottom: 2px;
         }
 
         .nav-button:active {
-          transform: scale(0.9);
+          transform: translateY(30px) scale(0.9);
           background: rgba(255, 255, 255, 0.3);
         }
 
         @media (min-width: 769px) {
-          .nav-button { display: none; } /* Hide arrows on desktop if you only want hover */
+          .nav-button { display: none; }
         }
       `}</style>
 
-      {/* Background Layers */}
       <div className="bg-container">
         <div className="bg-layer" style={{ backgroundImage: `url('/bg.png')`, zIndex: 1 }} />
         <div className="bg-layer" style={{ backgroundImage: `url('${getBgImage()}')`, opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }} />
       </div>
 
-      {/* Navigation Arrows */}
       <div className="ui-overlay">
-        <div className="nav-button" onClick={prevItem}>←</div>
-        <div className="nav-button" onClick={nextItem}>→</div>
+        {/* Logic swapped: Left arrow (<) moves to higher index (left) */}
+        <div className="nav-button" onClick={moveLeft}> &lt; </div>
+        {/* Logic swapped: Right arrow (>) moves to lower index (right) */}
+        <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
 
       <div style={{ width: '100vw', height: '100vh', position: 'relative', zIndex: 10 }}>
@@ -192,13 +199,13 @@ export default function App() {
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              
-             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.9, -0.1, 0.4]}>
+             <group position={isMobile ? [0.75, 0.1, 0.4] : [0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance 
                     key={i} 
                     index={i} 
                     url={url} 
-                    active={hoveredIndex === i} // Parent controls if child is lifted
+                    active={hoveredIndex === i} 
                     onHover={setHoveredIndex} 
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
