@@ -99,9 +99,6 @@ export default function App() {
     '/Web_Cart_08_V1.glb'
   ]
 
-  // LOGIC FIXED: 
-  // Because cartridges use negative X/Z positions, 
-  // higher index = left, lower index = right.
   const moveLeft = () => {
     setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
   }
@@ -133,22 +130,22 @@ export default function App() {
           z-index: 20;
           pointer-events: none;
           display: flex;
-          align-items: center; /* Vertically Centered */
+          align-items: flex-end; /* ANCHORED TO BOTTOM */
           justify-content: space-between;
-          padding: 0 20px;
+          padding: 0 30px 60px 30px; /* 60px bottom margin */
           box-sizing: border-box;
         }
 
         .nav-button {
-          width: 55px;
-          height: 55px;
+          width: 60px;
+          height: 60px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.2);
           color: white;
-          font-size: 20px;
+          font-size: 22px;
           font-weight: bold;
           display: flex;
           align-items: center;
@@ -157,15 +154,12 @@ export default function App() {
           pointer-events: auto;
           transition: all 0.2s;
           user-select: none;
-          /* MOVED DOWN 30px */
-          transform: translateY(30px);
-          /* Perfect centering for < and > */
           line-height: 0;
           padding-bottom: 2px;
         }
 
         .nav-button:active {
-          transform: translateY(30px) scale(0.9);
+          transform: scale(0.85);
           background: rgba(255, 255, 255, 0.3);
         }
 
@@ -180,9 +174,7 @@ export default function App() {
       </div>
 
       <div className="ui-overlay">
-        {/* Logic swapped: Left arrow (<) moves to higher index (left) */}
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
-        {/* Logic swapped: Right arrow (>) moves to lower index (right) */}
         <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
 
