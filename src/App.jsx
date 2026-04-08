@@ -1,4 +1,4 @@
-import { Suspense, useState, useRef, useLayoutEffect, useMemo } from 'react'
+import { Suspense, useState, useRef, useLayoutEffect, useMemo, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF, Environment } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
@@ -106,11 +106,12 @@ export default function App() {
     setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
   }
 
-  const getBgImage = () => {
-    if (hoveredIndex === null) return "/bg.png"
+  // Pre-calculate image URL to prevent logic flickering
+  const activeBg = useMemo(() => {
+    if (hoveredIndex === null) return null
     const num = String(hoveredIndex + 1).padStart(2, '0')
     return `/Web_BG_${num}.png`
-  }
+  }, [hoveredIndex])
   
   return (
     <>
@@ -119,58 +120,79 @@ export default function App() {
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: sans-serif; }
         
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out; }
         
+        .bg-layer { 
+          position: absolute; 
+          top: 0; left: 0; 
+          width: 100%; height: 100%; 
+          background-size: cover; 
+          background-position: center; 
+          background-repeat: no-repeat; 
+        }
+
+        /* The base layer doesn't transition, it's just there */
+        .base-bg { z-index: 1; }
+
+        /* The dynamic layer only transitions opacity */
+        .dynamic-bg { 
+          z-index: 2; 
+          transition: opacity 0.4s ease-out; 
+        }
+
         .ui-overlay {
           position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
+          top: 0; left: 0;
+          width: 100%; height: 100%;
           z-index: 20;
           pointer-events: none;
           display: flex;
-          align-items: flex-end; /* ANCHORED TO BOTTOM */
+          align-items: flex-end;
           justify-content: space-between;
-          padding: 0 30px 60px 30px; /* 60px bottom margin */
+          padding: 0 30px 60px 30px;
           box-sizing: border-box;
         }
 
         .nav-button {
-          width: 60px;
-          height: 60px;
+          width: 60px; height: 60px;
           border-radius: 50%;
           background: rgba(255, 255, 255, 0.1);
           backdrop-filter: blur(12px);
           -webkit-backdrop-filter: blur(12px);
           border: 1px solid rgba(255, 255, 255, 0.2);
-          color: white;
-          font-size: 22px;
-          font-weight: bold;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          cursor: pointer;
-          pointer-events: auto;
-          transition: all 0.2s;
-          user-select: none;
-          line-height: 0;
-          padding-bottom: 2px;
+          color: white; font-size: 22px; font-weight: bold;
+          display: flex; align-items: center; justify-content: center;
+          cursor: pointer; pointer-events: auto;
+          transition: all 0.2s; user-select: none;
+          line-height: 0; padding-bottom: 2px;
         }
 
-        .nav-button:active {
-          transform: scale(0.85);
-          background: rgba(255, 255, 255, 0.3);
-        }
+        .nav-button:active { transform: scale(0.85); background: rgba(255, 255, 255, 0.3); }
 
-        @media (min-width: 769px) {
-          .nav-button { display: none; }
-        }
+        /* Hidden Preloader */
+        .preloader { position: absolute; width: 0; height: 0; overflow: hidden; z-index: -100; visibility: hidden; }
+
+        @media (min-width: 769px) { .nav-button { display: none; } }
       `}</style>
 
+      {/* 1. IMAGE PRELOADER: Forces browser to keep all 8 BGs in cache */}
+      <div className="preloader">
+        {cartridgeModels.map((_, i) => (
+          <img key={i} src={`/Web_BG_${String(i + 1).padStart(2, '0')}.png`} alt="" />
+        ))}
+      </div>
+
       <div className="bg-container">
-        <div className="bg-layer" style={{ backgroundImage: `url('/bg.png')`, zIndex: 1 }} />
-        <div className="bg-layer" style={{ backgroundImage: `url('${getBgImage()}')`, opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }} />
+        {/* Layer 1: Static base image */}
+        <div className="bg-layer base-bg" style={{ backgroundImage: `url('/bg.png')` }} />
+        
+        {/* Layer 2: Dynamic image that only changes opacity */}
+        <div 
+          className="bg-layer dynamic-bg" 
+          style={{ 
+            backgroundImage: activeBg ? `url('${activeBg}')` : 'none', 
+            opacity: activeBg ? 1 : 0 
+          }} 
+        />
       </div>
 
       <div className="ui-overlay">
@@ -190,7 +212,6 @@ export default function App() {
         >
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance 
@@ -204,7 +225,6 @@ export default function App() {
                 ))}
              </group>
           </Suspense>
-
           <EffectComposer multisampling={0}>
             <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
             <Noise opacity={0.015} />
