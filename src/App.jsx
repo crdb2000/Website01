@@ -1,4 +1,4 @@
-import { Suspense, useState, useRef, useLayoutEffect, useMemo } from 'react'
+import { Suspense, useState, useRef, useLayoutEffect, useMemo, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
 import { useGLTF, Environment } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
@@ -8,13 +8,12 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-function GbaInstance({ index, url, onHover, ...props }) {
+function GbaInstance({ index, url, onHover, active, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
-  const [hovered, setHovered] = useState(false)
   const groupRef = useRef()
   const startTime = useRef(0) 
-  const lastHovered = useRef(false) 
+  const lastActive = useRef(false) 
 
   useLayoutEffect(() => {
     clone.traverse((child) => {
@@ -25,15 +24,16 @@ function GbaInstance({ index, url, onHover, ...props }) {
         child.material.emissive.set(WHITE)
         child.material.metalness = 0.2
         child.material.roughness = 0.4
-        child.material.transparent = false // Keep opaque to prevent edge bleeding
+        child.material.transparent = false 
         if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
   }, [clone, url])
 
+  // The lift animation now reacts to the 'active' prop from parent
   const { posY, factor } = useSpring({
-    posY: hovered ? 0.35 : 0,
-    factor: hovered ? 1 : 0,
+    posY: active ? 0.35 : 0,
+    factor: active ? 1 : 0,
     config: { mass: 2, tension: 70, friction: 26 }
   })
 
@@ -41,12 +41,10 @@ function GbaInstance({ index, url, onHover, ...props }) {
     const t = state.clock.getElapsedTime()
     const f = factor.get()
 
-    if (hovered && !lastHovered.current) startTime.current = t
-    lastHovered.current = hovered
+    if (active && !lastActive.current) startTime.current = t
+    lastActive.current = active
 
     const localTime = t - startTime.current
-    
-    // RESTORED: High emission pulse for that glowing look
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
     const restIntensity = 2.5 
 
@@ -69,8 +67,8 @@ function GbaInstance({ index, url, onHover, ...props }) {
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
         <mesh 
-          onPointerOver={(e) => { e.stopPropagation(); setHovered(true); onHover(index) }} 
-          onPointerOut={() => { setHovered(false); onHover(null) }}
+          onPointerOver={(e) => { e.stopPropagation(); onHover(index) }} 
+          onPointerOut={() => onHover(null)}
         >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
@@ -83,8 +81,6 @@ function GbaInstance({ index, url, onHover, ...props }) {
 
 export default function App() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
-  
-  // This state will track the window width to update the camera live
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
 
   useLayoutEffect(() => {
@@ -104,6 +100,14 @@ export default function App() {
     '/Web_Cart_08_V1.glb'
   ]
 
+  // Navigation functions
+  const nextItem = () => {
+    setHoveredIndex((prev) => (prev === null || prev >= 7 ? 0 : prev + 1))
+  }
+  const prevItem = () => {
+    setHoveredIndex((prev) => (prev === null || prev <= 0 ? 7 : prev - 1))
+  }
+
   const getBgImage = () => {
     if (hoveredIndex === null) return "/bg.png"
     const num = String(hoveredIndex + 1).padStart(2, '0')
@@ -113,27 +117,73 @@ export default function App() {
   return (
     <>
       <style>{`
-        * { margin: 0; padding: 0; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; }
+        * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: sans-serif; }
+        
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-size: cover; background-position: center; background-repeat: no-repeat; transition: background-image 0.5s ease-in-out, opacity 0.5s ease-in-out; }
+        
+        /* Navigation UI */
+        .ui-overlay {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: 20;
+          pointer-events: none;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          padding: 0 20px;
+          box-sizing: border-box;
+        }
+
+        .nav-button {
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: rgba(255, 255, 255, 0.1);
+          backdrop-filter: blur(10px);
+          border: 1px solid rgba(255, 255, 255, 0.2);
+          color: white;
+          font-size: 24px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          pointer-events: auto;
+          transition: all 0.2s;
+          user-select: none;
+        }
+
+        .nav-button:active {
+          transform: scale(0.9);
+          background: rgba(255, 255, 255, 0.3);
+        }
+
+        @media (min-width: 769px) {
+          .nav-button { display: none; } /* Hide arrows on desktop if you only want hover */
+        }
       `}</style>
 
+      {/* Background Layers */}
       <div className="bg-container">
         <div className="bg-layer" style={{ backgroundImage: `url('/bg.png')`, zIndex: 1 }} />
         <div className="bg-layer" style={{ backgroundImage: `url('${getBgImage()}')`, opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }} />
       </div>
 
+      {/* Navigation Arrows */}
+      <div className="ui-overlay">
+        <div className="nav-button" onClick={prevItem}>←</div>
+        <div className="nav-button" onClick={nextItem}>→</div>
+      </div>
+
       <div style={{ width: '100vw', height: '100vh', position: 'relative', zIndex: 10 }}>
         <Canvas 
-          key={isMobile ? 'mobile' : 'desktop'} // Forces a camera refresh when switching modes
+          key={isMobile ? 'mobile' : 'desktop'}
           dpr={[1, 2]} 
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
-          /* 
-             DYNAMIC CAMERA:
-             If mobile: FOV is 30 (zoomed out) and position is pushed back.
-             If desktop: FOV is 10 (zoomed in).
-          */
           camera={{ 
             position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], 
             fov: isMobile ? 25 : 10 
@@ -142,10 +192,16 @@ export default function App() {
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              
-             {/* Centering adjustment for mobile */}
-             <group position={isMobile ? [0.75, 0.1, 0.4] : [0.9, -0.1, 0.4]}>
+             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
-                  <GbaInstance key={i} index={i} url={url} onHover={setHoveredIndex} position={[i * -0.28, 0, i * -0.15]} />
+                  <GbaInstance 
+                    key={i} 
+                    index={i} 
+                    url={url} 
+                    active={hoveredIndex === i} // Parent controls if child is lifted
+                    onHover={setHoveredIndex} 
+                    position={[i * -0.28, 0, i * -0.15]} 
+                  />
                 ))}
              </group>
           </Suspense>
