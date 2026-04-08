@@ -23,8 +23,17 @@ function VideoLayer({ src, active }) {
   }, [active, hasLoaded])
 
   return (
-    <video ref={videoRef} src={hasLoaded ? src : undefined} className="bg-layer" muted loop playsInline
-      style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
+    <video 
+      ref={videoRef} 
+      src={hasLoaded ? src : undefined} 
+      className="bg-layer" 
+      muted loop playsInline
+      style={{ 
+        opacity: active ? 1 : 0, 
+        zIndex: active ? -1 : -2, // Push videos behind the canvas
+        pointerEvents: 'none' 
+      }} 
+    />
   )
 }
 
@@ -133,7 +142,8 @@ function Home() {
   }, [hoveredIndex])
 
   return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative' }}>
+    <div className="page-container">
+      {/* Background Section (Moved behind Canvas with z-index) */}
       <div className="bg-container">
         <div className="bg-layer base-bg" />
         {cartridges.map((item, i) => (
@@ -141,6 +151,7 @@ function Home() {
         ))}
       </div>
 
+      {/* UI Overlay Section */}
       <div className="ui-overlay">
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
         <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={handleSelect}>
@@ -149,33 +160,32 @@ function Home() {
         <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
 
-      <Canvas 
-        key={isMobile ? 'mobile' : 'desktop'}
-        dpr={[1, 2]} 
-        gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
-        camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }} 
-        style={{ width: '100%', height: '100%' }}
-      >
-        <Suspense fallback={null}>
-           <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-           <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-              {cartridges.map((item, i) => (
-                <GbaInstance 
-                  key={i} 
-                  index={i} 
-                  url={item.model} 
-                  active={hoveredIndex === i} 
-                  onHover={setHoveredIndex}
-                  position={[i * -0.28, 0, i * -0.15]} 
-                />
-              ))}
-           </group>
-        </Suspense>
-        <EffectComposer multisampling={0}>
-          <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
-          <Noise opacity={0.015} />
-        </EffectComposer>
-      </Canvas>
+      {/* 3D Section */}
+      <div className="canvas-wrapper">
+        <Canvas 
+          key={isMobile ? 'mobile' : 'desktop'}
+          dpr={[1, 2]} 
+          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
+          camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }} 
+        >
+          <Suspense fallback={null}>
+             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
+             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+                {cartridges.map((item, i) => (
+                  <GbaInstance 
+                    key={i} index={i} url={item.model} 
+                    active={hoveredIndex === i} onHover={setHoveredIndex}
+                    position={[i * -0.28, 0, i * -0.15]} 
+                  />
+                ))}
+             </group>
+          </Suspense>
+          <EffectComposer multisampling={0}>
+            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} />
+            <Noise opacity={0.015} />
+          </EffectComposer>
+        </Canvas>
+      </div>
     </div>
   )
 }
@@ -202,23 +212,23 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: #000; font-family: 'Helvetica', sans-serif; }
         
-        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
+        .page-container { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+        .canvas-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .canvas-wrapper canvas { pointer-events: auto; }
+
+        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: -5; pointer-events: none; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
-        .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
+        .base-bg { z-index: -10; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         
         .ui-overlay {
           position: absolute;
-          bottom: 60px;
-          left: 50%;
-          transform: translateX(-50%);
-          width: 100%;
-          max-width: 500px;
-          z-index: 50; /* Above the canvas */
+          top: 0; left: 0; width: 100%; height: 100%;
+          z-index: 100;
           pointer-events: none;
           display: flex;
-          align-items: center;
+          align-items: flex-end; /* Original bottom alignment */
           justify-content: space-between;
-          padding: 0 40px;
+          padding: 0 30px 60px 30px; /* Original 60px margin */
           box-sizing: border-box;
         }
 
@@ -244,17 +254,19 @@ export default function App() {
           cursor: pointer; transition: all 0.3s; user-select: none;
         }
 
-        .select-button.active {
-          background: white; color: black; transform: scale(1.1);
-          box-shadow: 0 10px 30px rgba(255,255,255,0.2);
-        }
-
+        .select-button.active { background: white; color: black; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
 
         .case-study-page { width: 100vw; height: 100vh; background: #000; color: white; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
         .home-btn { position: fixed; top: 40px; border: 1px solid #333; padding: 10px 20px; border-radius: 20px; color: #777; text-decoration: none; font-size: 12px; transition: 0.2s; z-index: 100; }
         .home-btn:hover { border-color: #fff; color: #fff; }
         .case-content h1 { font-size: 80px; letter-spacing: -3px; }
+
+        @media (min-width: 769px) {
+          .ui-overlay { align-items: center; padding-bottom: 0; }
+          .select-button { position: absolute; bottom: 60px; left: 50%; transform: translateX(-50%); }
+          .select-button.active { transform: translateX(-50%) scale(1.1); }
+        }
       `}</style>
 
       <Routes>
