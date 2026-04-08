@@ -90,16 +90,15 @@ export default function App() {
   useEffect(() => {
     if (videoRef.current) {
       if (hoveredIndex === 1) {
-        // Specifically for the second cartridge
-        videoRef.current.src = "/WebBG_LBL_01_Low.mp4"
+        // Updated to the full-size video name
+        videoRef.current.src = "/WebBG_LBL_01.mp4"
         videoRef.current.play().catch(() => {})
       } else if (hoveredIndex !== null) {
-        // Fallback for other cartridges if you add more later
+        // Fallback for others
         const num = String(hoveredIndex + 1).padStart(2, '0')
         videoRef.current.src = `/Web_BG_${num}.mp4`
         videoRef.current.play().catch(() => {})
       } else {
-        // No hover, pause video
         videoRef.current.pause()
       }
     }
