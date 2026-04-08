@@ -86,18 +86,21 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Optimized Video Swapping Logic
+ // Optimized Video Swapping Logic
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
 
     if (hoveredIndex === 1) {
+      // Check this filename carefully!
       video.src = "/WebBG_LBL_01_NewLarge.mp4"
-      video.play().catch(() => {})
+      video.load() // Forces the player to look at the new src
+      video.play().catch((e) => console.log("Video Play Error:", e))
     } else if (hoveredIndex !== null) {
       const num = String(hoveredIndex + 1).padStart(2, '0')
       video.src = `/Web_BG_${num}.mp4`
-      video.play().catch(() => {})
+      video.load()
+      video.play().catch((e) => console.log("Video Play Error:", e))
     } else {
       video.pause()
     }
