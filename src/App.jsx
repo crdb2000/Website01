@@ -136,7 +136,7 @@ export default function App() {
           */
           camera={{ 
             position: isMobile ? [4, 1, 4] : [5, 0.8, 5], 
-            fov: isMobile ? 20 : 10 
+            fov: isMobile ? 25 : 10 
           }} 
         >
           <Suspense fallback={null}>
