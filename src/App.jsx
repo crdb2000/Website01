@@ -212,7 +212,7 @@ export default function App() {
         >
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.9, -0.1, 0.4]}>
+             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
                   <GbaInstance 
                     key={i} 
