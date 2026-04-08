@@ -103,18 +103,27 @@ export default function App() {
     <>
       <style>{`
         * { margin: 0; padding: 0; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; background: #111; }
+        html, body, #root { 
+          width: 100%; 
+          height: 100%; 
+          overflow: hidden; 
+          background-color: #000;
+          /* Look for the png file in the public folder */
+          background-image: url('/bg.png'); 
+          background-size: cover;
+          background-position: center center;
+          background-repeat: no-repeat;
+        }
       `}</style>
 
       <div style={{ width: '100vw', height: '100vh' }}>
         <Canvas 
           shadows
           dpr={[1, 2]} 
-          gl={{ antialias: true, powerPreference: "high-performance" }}
+          /* alpha: true makes the 3D scene background transparent so we see the PNG */
+          gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
           camera={{ position: [5, 0.8, 5], fov: 10 }} 
         >
-          <color attach="background" args={['#050505']} />
-
           <Suspense fallback={null}>
              <Environment 
                 files="/the_sky_is_on_fire_2kBW.hdr" 
