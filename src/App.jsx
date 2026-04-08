@@ -86,21 +86,20 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Dynamic Video Logic
+  // Optimized Video Swapping Logic
   useEffect(() => {
-    if (videoRef.current) {
-      if (hoveredIndex === 1) {
-        // Updated to your new high-res filename
-        videoRef.current.src = "/WebBG_LBL_01_NewLarge.mp4" 
-        videoRef.current.play().catch(() => {})
-      } else if (hoveredIndex !== null) {
-        // Fallback for the other cartridges
-        const num = String(hoveredIndex + 1).padStart(2, '0')
-        videoRef.current.src = `/Web_BG_${num}.mp4`
-        videoRef.current.play().catch(() => {})
-      } else {
-        videoRef.current.pause()
-      }
+    const video = videoRef.current
+    if (!video) return
+
+    if (hoveredIndex === 1) {
+      video.src = "/WebBG_LBL_01_NewLarge.mp4"
+      video.play().catch(() => {})
+    } else if (hoveredIndex !== null) {
+      const num = String(hoveredIndex + 1).padStart(2, '0')
+      video.src = `/Web_BG_${num}.mp4`
+      video.play().catch(() => {})
+    } else {
+      video.pause()
     }
   }, [hoveredIndex])
 
@@ -120,10 +119,12 @@ export default function App() {
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 1; background-image: url('/bg.png'); background-size: cover; background-position: center; }
+        
         .ui-overlay { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 20; pointer-events: none; display: flex; box-sizing: border-box; padding: 0 40px; align-items: flex-end; justify-content: space-between; padding-bottom: 60px; }
         .nav-button { width: 65px; height: 65px; border-radius: 50%; background: rgba(255, 255, 255, 0.08); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(255, 255, 255, 0.15); color: white; font-size: 24px; font-weight: bold; display: flex; align-items: center; justify-content: center; cursor: pointer; pointer-events: auto; transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); user-select: none; line-height: 0; padding-bottom: 3px; }
         .nav-button:hover { background: rgba(255, 255, 255, 0.15); border: 1px solid rgba(255, 255, 255, 0.4); transform: scale(1.1); }
         .nav-button:active { transform: scale(0.9); }
+        
         @media (min-width: 769px) { .ui-overlay { align-items: center; padding-bottom: 0; } .nav-button { width: 80px; height: 80px; font-size: 30px; } .nav-button:hover { transform: scale(1.1); } .nav-button:active { transform: scale(0.95); } }
       `}</style>
 
@@ -135,7 +136,6 @@ export default function App() {
           muted
           loop
           playsInline
-          /* Only shows video if we have a hovered index */
           style={{ opacity: hoveredIndex !== null ? 1 : 0, zIndex: 2 }}
         />
       </div>
