@@ -8,7 +8,8 @@ import * as THREE from 'three'
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-function GbaInstance({ index, url, ...props }) {
+// Added onHover prop to GbaInstance
+function GbaInstance({ index, url, onHover, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
   const [hovered, setHovered] = useState(false)
@@ -71,8 +72,15 @@ function GbaInstance({ index, url, ...props }) {
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
         <mesh 
-          onPointerOver={(e) => (e.stopPropagation(), setHovered(true))} 
-          onPointerOut={(e) => setHovered(false)}
+          onPointerOver={(e) => {
+            e.stopPropagation()
+            setHovered(true)
+            onHover(index) // Tell parent which one is hovered
+          }} 
+          onPointerOut={() => {
+            setHovered(false)
+            onHover(null) // Tell parent nothing is hovered
+          }}
         >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
@@ -88,6 +96,8 @@ function GbaInstance({ index, url, ...props }) {
 }
 
 export default function App() {
+  const [hoveredIndex, setHoveredIndex] = useState(null)
+
   const cartridgeModels = [
     '/Cartridge_Web_04.glb',
     '/Web_Cart_02_V1.glb',
@@ -98,6 +108,14 @@ export default function App() {
     '/Web_Cart_07_V1.glb',
     '/Web_Cart_08_V1.glb'
   ]
+
+  // Map the index to the correct background image name
+  const getBgImage = () => {
+    if (hoveredIndex === null) return "/bg.png"
+    // Pads number with a zero (e.g. 1 becomes 01)
+    const num = String(hoveredIndex + 1).padStart(2, '0')
+    return `/Web_BG_${num}.png`
+  }
   
   return (
     <>
@@ -108,19 +126,50 @@ export default function App() {
           height: 100%; 
           overflow: hidden; 
           background-color: #000;
-          /* Look for the png file in the public folder */
-          background-image: url('/bg.png'); 
+        }
+
+        .bg-container {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          z-index: -1;
+        }
+
+        .bg-layer {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
           background-size: cover;
-          background-position: center center;
+          background-position: center;
           background-repeat: no-repeat;
+          transition: background-image 0.4s ease-in-out, opacity 0.4s ease-in-out;
         }
       `}</style>
 
-      <div style={{ width: '100vw', height: '100vh' }}>
+      {/* Background Layers */}
+      <div className="bg-container">
+        {/* Base layer (Always bg.png) */}
+        <div className="bg-layer" style={{ backgroundImage: `url('/bg.png')`, z-index: 1 }} />
+        
+        {/* Hover layer (Fades in on top) */}
+        <div 
+          className="bg-layer" 
+          style={{ 
+            backgroundImage: `url('${getBgImage()}')`, 
+            opacity: hoveredIndex !== null ? 1 : 0,
+            zIndex: 2 
+          }} 
+        />
+      </div>
+
+      <div style={{ width: '100vw', height: '100vh', position: 'relative', zIndex: 10 }}>
         <Canvas 
           shadows
           dpr={[1, 2]} 
-          /* alpha: true makes the 3D scene background transparent so we see the PNG */
           gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} 
           camera={{ position: [5, 0.8, 5], fov: 10 }} 
         >
@@ -137,6 +186,7 @@ export default function App() {
                     key={i} 
                     index={i} 
                     url={url} 
+                    onHover={setHoveredIndex} // Pass the state function down
                     position={[i * -0.28, 0, i * -0.15]} 
                   />
                 ))}
