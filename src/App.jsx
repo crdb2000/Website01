@@ -90,11 +90,11 @@ export default function App() {
   useEffect(() => {
     if (videoRef.current) {
       if (hoveredIndex === 1) {
-        // Updated to the full-size video name
-        videoRef.current.src = "/WebBG_LBL_01.mp4"
+        // Updated to your new high-res filename
+        videoRef.current.src = "/WebBG_LBL_01_NewLarge.mp4" 
         videoRef.current.play().catch(() => {})
       } else if (hoveredIndex !== null) {
-        // Fallback for others
+        // Fallback for the other cartridges
         const num = String(hoveredIndex + 1).padStart(2, '0')
         videoRef.current.src = `/Web_BG_${num}.mp4`
         videoRef.current.play().catch(() => {})
