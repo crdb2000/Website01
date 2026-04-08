@@ -121,7 +121,6 @@ export default function App() {
           background-size: cover; 
           background-position: center; 
           background-repeat: no-repeat; 
-          /* SMOOTH FADE TRANSITION */
           transition: opacity 0.8s ease-in-out;
         }
 
@@ -135,36 +134,55 @@ export default function App() {
           z-index: 20;
           pointer-events: none;
           display: flex;
+          box-sizing: border-box;
+          padding: 0 40px;
+          /* Default: Mobile layout (bottom) */
           align-items: flex-end;
           justify-content: space-between;
-          padding: 0 30px 60px 30px;
-          box-sizing: border-box;
+          padding-bottom: 60px;
         }
 
         .nav-button {
-          width: 60px; height: 60px;
+          width: 65px; height: 65px;
           border-radius: 50%;
-          background: rgba(255, 255, 255, 0.1);
-          backdrop-filter: blur(12px);
-          -webkit-backdrop-filter: blur(12px);
-          border: 1px solid rgba(255, 255, 255, 0.2);
-          color: white; font-size: 22px; font-weight: bold;
+          background: rgba(255, 255, 255, 0.08);
+          backdrop-filter: blur(15px);
+          -webkit-backdrop-filter: blur(15px);
+          border: 1px solid rgba(255, 255, 255, 0.15);
+          color: white; font-size: 24px; font-weight: bold;
           display: flex; align-items: center; justify-content: center;
           cursor: pointer; pointer-events: auto;
-          transition: all 0.2s; user-select: none;
-          line-height: 0; padding-bottom: 2px;
+          transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); 
+          user-select: none;
+          line-height: 0; padding-bottom: 3px;
         }
 
-        .nav-button:active { transform: scale(0.85); background: rgba(255, 255, 255, 0.3); }
+        .nav-button:hover {
+          background: rgba(255, 255, 255, 0.15);
+          border: 1px solid rgba(255, 255, 255, 0.4);
+          transform: scale(1.1);
+        }
 
-        @media (min-width: 769px) { .nav-button { display: none; } }
+        .nav-button:active { transform: scale(0.9); }
+
+        /* DESKTOP RE-POSITIONING */
+        @media (min-width: 769px) {
+          .ui-overlay {
+            align-items: center; /* Move to vertical middle */
+            padding-bottom: 0;
+          }
+          .nav-button {
+            width: 80px; height: 80px; /* Slightly larger on desktop */
+            font-size: 30px;
+          }
+          /* This moves the hover effect back to scale(1.1) specifically for desktop */
+          .nav-button:hover { transform: scale(1.1); }
+          .nav-button:active { transform: scale(0.95); }
+        }
       `}</style>
 
       <div className="bg-container">
-        {/* Layer 1: The permanent base image */}
         <div className="bg-layer base-bg" style={{ backgroundImage: `url('/bg.png')` }} />
-        
-        {/* Layer 2: 8 separate layers that cross-fade into each other */}
         {cartridgeModels.map((_, i) => (
           <div 
             key={i}
