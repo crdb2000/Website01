@@ -165,7 +165,7 @@ function Home() {
         <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+             <group position={isMobile ? [0.715, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (
                   <GbaInstance 
                     key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
