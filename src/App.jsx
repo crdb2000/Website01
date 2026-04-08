@@ -1,6 +1,6 @@
 import { Suspense, useState, useRef, useLayoutEffect, useMemo } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { ContactShadows, useGLTF, Environment } from '@react-three/drei'
+import { useGLTF, Environment } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
@@ -24,7 +24,9 @@ function GbaInstance({ index, url, onHover, ...props }) {
         child.material.color.set(WHITE)
         child.material.emissive.set(WHITE)
         child.material.metalness = 0.2
-        child.material.roughness = 0.5
+        child.material.roughness = 0.4
+        // This ensures the material doesn't try to blend weirdly with the background
+        child.material.transparent = false
         if (child.material.map) child.material.map.colorSpace = THREE.SRGBColorSpace
       }
     })
@@ -33,7 +35,7 @@ function GbaInstance({ index, url, onHover, ...props }) {
   const { posY, factor } = useSpring({
     posY: hovered ? 0.35 : 0,
     factor: hovered ? 1 : 0,
-    config: { mass: 2, tension: 70, friction: 30 }
+    config: { mass: 2, tension: 70, friction: 26 }
   })
 
   useFrame((state) => {
@@ -44,9 +46,9 @@ function GbaInstance({ index, url, onHover, ...props }) {
     lastHovered.current = hovered
 
     const localTime = t - startTime.current
-    // Reduced pulse intensity slightly to prevent "ghosting"
-    const activePulse = 6.0 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 4.0)
-    const restIntensity = 1.5 
+    // Capped intensity: High HDR values (> 1.0) on transparent backgrounds cause the "ghosting"
+    const activePulse = 2.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 1.5)
+    const restIntensity = 1.0 
 
     if (groupRef.current) {
       groupRef.current.position.y = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -120,7 +122,7 @@ export default function App() {
           camera={{ position: [5, 0.8, 5], fov: 10 }} 
         >
           <Suspense fallback={null}>
-             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={25} rotation={[0, Math.PI * (200 / 180), 0]} />
+             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={20} rotation={[0, Math.PI * (200 / 180), 0]} />
              
              <group position={[0.9, -0.1, 0.4]}>
                 {cartridgeModels.map((url, i) => (
@@ -129,20 +131,12 @@ export default function App() {
              </group>
           </Suspense>
 
-          <EffectComposer multisampling={4}>
-            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={4.0} />
-            <Noise opacity={0.015} />
+          <EffectComposer multisampling={0}>
+            <ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={1.5} />
+            <Noise opacity={0.01} />
           </EffectComposer>
 
-          {/* Adjusted Shadow: Increased blur and lowered opacity to stop ghosting */}
-          <ContactShadows 
-            position={[0, -0.4, 0]} 
-            opacity={0.25} 
-            scale={15} 
-            blur={3.5} 
-            far={1} 
-            color="#000000"
-          />
+          {/* ContactShadows removed to solve ghosting entirely */}
         </Canvas>
       </div>
     </>
