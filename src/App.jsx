@@ -9,8 +9,6 @@ import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link } 
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const WHITE = new THREE.Color('#ffffff')
 
-// --- DATA CONFIGURATION ---
-
 const CARTRIDGE_DATA = [
   { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel' },
   { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud' },
@@ -20,8 +18,6 @@ const CARTRIDGE_DATA = [
   { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice' },
   { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further' }
 ]
-
-// --- COMPONENTS ---
 
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
@@ -40,7 +36,7 @@ function VideoLayer({ src, active }) {
   )
 }
 
-function GbaInstance({ index, url, onHover, onClick, active, ...props }) {
+function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props }) {
   const { scene } = useGLTF(url)
   const clone = useMemo(() => scene.clone(true), [scene])
   const groupRef = useRef()
@@ -94,7 +90,13 @@ function GbaInstance({ index, url, onHover, onClick, active, ...props }) {
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh onPointerOver={(e) => { e.stopPropagation(); onHover(index) }} onPointerOut={() => onHover(null)} onClick={(e) => { e.stopPropagation(); onClick() }}>
+        <mesh 
+          // Disable Hover on Mobile, allow on Desktop
+          onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
+          onPointerOut={() => { if(!isMobile) onHover(null); }} 
+          // Click works on both (On mobile, first click selects, second click enters)
+          onClick={(e) => { e.stopPropagation(); onClick(index); }}
+        >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -103,8 +105,6 @@ function GbaInstance({ index, url, onHover, onClick, active, ...props }) {
     </animated.group>
   )
 }
-
-// --- PAGES ---
 
 function Home() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
@@ -119,8 +119,17 @@ function Home() {
 
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
-  const handleSelect = () => {
-    if (hoveredIndex !== null) navigate(`/case-study/${CARTRIDGE_DATA[hoveredIndex].id}`)
+  
+  const handleSelect = (index) => {
+    const targetIndex = index !== undefined ? index : hoveredIndex;
+    if (targetIndex !== null) {
+      // On mobile: if tapping a new one, select it. If tapping already active one, enter.
+      if (isMobile && hoveredIndex !== targetIndex) {
+        setHoveredIndex(targetIndex)
+      } else {
+        navigate(`/case-study/${CARTRIDGE_DATA[targetIndex].id}`)
+      }
+    }
   }
 
   useEffect(() => {
@@ -131,7 +140,7 @@ function Home() {
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hoveredIndex])
+  }, [hoveredIndex, isMobile])
 
   return (
     <div className="home-wrapper">
@@ -144,7 +153,7 @@ function Home() {
 
       <div className="ui-overlay">
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
-        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={handleSelect}>
+        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>
           SELECT
         </div>
         <div className="nav-button" onClick={moveRight}> &gt; </div>
@@ -156,7 +165,14 @@ function Home() {
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (
-                  <GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />
+                  <GbaInstance 
+                    key={i} index={i} url={item.model} 
+                    active={hoveredIndex === i} 
+                    isMobile={isMobile}
+                    onHover={setHoveredIndex} 
+                    onClick={handleSelect} 
+                    position={[i * -0.28, 0, i * -0.15]} 
+                  />
                 ))}
              </group>
           </Suspense>
@@ -169,10 +185,8 @@ function Home() {
 
 function CaseStudy() {
   const { id } = useParams()
-  // Find the display title based on the URL ID
   const project = CARTRIDGE_DATA.find(p => p.id === id)
   const displayTitle = project ? project.title : id
-
   return (
     <div className="case-study-page">
       <Link to="/" className="home-btn">BACK TO COLLECTION</Link>
@@ -199,7 +213,7 @@ export default function App() {
 
         .ui-overlay {
           position: absolute;
-          bottom: 100px; /* RAISED HIGHER FOR MOBILE SAFETY */
+          bottom: 100px;
           left: 50%;
           transform: translateX(-50%);
           width: 100%;
@@ -207,7 +221,7 @@ export default function App() {
           z-index: 100;
           pointer-events: none;
           display: flex;
-          align-items: center; /* PERFECT Y-AXIS ALIGNMENT */
+          align-items: center; 
           justify-content: space-between;
           padding: 0 40px;
           box-sizing: border-box;
@@ -225,7 +239,7 @@ export default function App() {
         }
 
         .select-button {
-          height: 45px; /* Fixed height to match arrow visual weight */
+          height: 45px;
           padding: 0 35px; border-radius: 40px;
           background: rgba(255, 255, 255, 0.05);
           backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
