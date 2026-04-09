@@ -12,13 +12,13 @@ const FILL_COLOR = new THREE.Color('#eae6e4')
 const DARK_THEME = '#212020' 
 
 const CARTRIDGE_DATA = [
-  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel' },
-  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud' },
-  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125' },
-  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice' },
-  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further' }
+  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel', headerImg: null },
+  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', headerImg: '/LBL_TopBanner_01.png' },
+  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', headerImg: null },
+  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', headerImg: null },
+  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', headerImg: null },
+  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', headerImg: null },
+  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', headerImg: null }
 ]
 
 // --- COMPONENTS ---
@@ -26,26 +26,32 @@ const CARTRIDGE_DATA = [
 function Loader({ finished, onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
+  const [hasStartedResume, setHasStartedResume] = useState(false)
 
+  // 1. Start playing INSTANTLY on load, pause at 0.5s
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {})
+    const vid = videoRef.current
+    if (vid) {
+      vid.play().catch(() => {})
       const pauseTimer = setTimeout(() => {
-        if (videoRef.current && progress < 100) videoRef.current.pause()
+        if (progress < 100) vid.pause()
       }, 500)
       return () => clearTimeout(pauseTimer)
     }
   }, [])
 
+  // 2. Resume when progress is 100%
   useEffect(() => {
-    if (progress === 100) {
+    if (progress === 100 && !hasStartedResume) {
+      setHasStartedResume(true)
       const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
+        // Transition down 500ms after resume
         setTimeout(() => onExit(), 500) 
-      }, 300) 
+      }, 200) 
       return () => clearTimeout(resumeTimer)
     }
-  }, [progress, onExit])
+  }, [progress, onExit, hasStartedResume])
 
   return (
     <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
@@ -143,11 +149,8 @@ function MainScene() {
   const [isLoaderActive, setIsLoaderActive] = useState(true)
 
   useEffect(() => {
-    if (activeCaseStudy) {
-      document.title = `${activeCaseStudy.title} | itsconnorbannister`
-    } else {
-      document.title = "Selection | itsconnorbannister"
-    }
+    if (activeCaseStudy) document.title = `${activeCaseStudy.title} | itsconnorbannister`
+    else document.title = "Selection | itsconnorbannister"
   }, [activeCaseStudy])
 
   useLayoutEffect(() => {
@@ -158,7 +161,6 @@ function MainScene() {
 
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
-  
   const handleSelect = (index) => {
     const targetIndex = index !== undefined ? index : hoveredIndex;
     if (targetIndex !== null) {
@@ -167,18 +169,10 @@ function MainScene() {
     }
   }
 
-  // KEYBOARD LOGIC (Updated with Escape key)
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // 1. If overlay is open, Escape closes it
-      if (e.key === 'Escape' && activeCaseStudy) {
-        setActiveCaseStudy(null)
-        return
-      }
-
-      // 2. Navigation only works when loader is gone and no study is open
+      if (e.key === 'Escape' && activeCaseStudy) { setActiveCaseStudy(null); return; }
       if (isLoaderActive || activeCaseStudy) return
-
       if (e.key === 'ArrowLeft') moveLeft()
       if (e.key === 'ArrowRight') moveRight()
       if (e.key === 'Enter') handleSelect()
@@ -220,10 +214,20 @@ function MainScene() {
 
       {/* Case Study Overlay */}
       <div className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
-        <div className="case-header" />
+        <div className="case-header">
+           <div 
+             className="case-header-parallax" 
+             style={{ 
+               backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none',
+               backgroundColor: '#eae5e3'
+             }} 
+           />
+        </div>
         <div className="case-content">
           <h1 className="header-title">{activeCaseStudy?.title}</h1>
           <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
+          {/* Spacer to enable scrolling */}
+          <div style={{ height: '100vh' }} />
         </div>
         <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
       </div>
@@ -257,10 +261,21 @@ export default function App() {
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
-        .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
+
+        .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
-        .case-header { width: 100%; height: 50vh; background-color: #eae5e3; flex-shrink: 0; }
-        .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; }
+        
+        /* IMPROVED PARALLAX HEADER */
+        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; }
+        .case-header-parallax { 
+            position: fixed; /* Attach image to viewport */
+            top: 0; left: 0; 
+            width: 100%; height: 50vh; 
+            background-size: cover; background-position: center; background-repeat: no-repeat;
+            z-index: -1; 
+        }
+
+        .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
         .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 600; transition: all 0.3s; }
@@ -268,7 +283,7 @@ export default function App() {
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
         .back-bubble:hover span { color: ${DARK_THEME}; }
         @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
-        @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
+        @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } .case-header-parallax { position: absolute; height: 100%; } }
       `}</style>
       <Routes>
         <Route path="/" element={<MainScene />} />
