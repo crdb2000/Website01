@@ -23,45 +23,34 @@ const CARTRIDGE_DATA = [
 
 // --- COMPONENTS ---
 
+// LOADER: Frozen as is per request
 function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-
-  // Force video to Start at Frame 0 and handle play/pause
   useEffect(() => {
     const vid = videoRef.current
     if (vid) {
-      vid.currentTime = 0 // FORCE START AT FRAME 0
+      vid.currentTime = 0
       vid.play().catch(() => {})
-      
-      const pauseTimer = setTimeout(() => {
-        if (progress < 100) vid.pause()
-      }, 500)
+      const pauseTimer = setTimeout(() => { if (progress < 100) vid.pause() }, 500)
       return () => clearTimeout(pauseTimer)
     }
   }, [])
-
   useEffect(() => {
     if (progress === 100) {
       const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
-        setTimeout(() => {
-          setIsExiting(true)
-          setTimeout(onExit, 1100)
-        }, 500) 
+        setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1100) }, 500) 
       }, 300) 
       return () => clearTimeout(resumeTimer)
     }
   }, [progress, onExit])
-
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
-        <div className="loader-bar-container">
-          <div className="loader-bar" style={{ width: `${progress}%` }} />
-        </div>
+        <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
     </div>
@@ -113,7 +102,6 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     lastActive.current = active
     const localTime = t - startTime.current
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
-    
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -152,10 +140,9 @@ function MainScene() {
   const [showLoader, setShowLoader] = useState(true)
   const overlayRef = useRef()
 
-  // SMOOTH PARALLAX LOGIC
   const onOverlayScroll = (e) => {
     const scrolled = e.target.scrollTop;
-    // Set a CSS variable on the overlay so the GPU handles the movement
+    // Update CSS variable for GPU acceleration
     overlayRef.current.style.setProperty('--scroll-y', `${scrolled}px`);
   }
 
@@ -182,7 +169,7 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activeCaseStudy && e.key === 'Escape') { setActiveCaseStudy(null); return; }
+      if (e.key === 'Escape' && activeCaseStudy) { setActiveCaseStudy(null); return; }
       if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') moveLeft()
       if (e.key === 'ArrowRight') moveRight()
@@ -210,7 +197,7 @@ function MainScene() {
       </div>
 
       <div className="canvas-container">
-        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
@@ -239,9 +226,9 @@ function MainScene() {
         <div className="case-content">
           <h1 className="header-title">{activeCaseStudy?.title}</h1>
           <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
-          <div style={{ height: '120vh' }} />
+          <div style={{ height: '150vh' }} />
         </div>
-        <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
+        <div className="back-bubble" onClick={() => { setActiveCaseStudy(null); if(overlayRef.current) overlayRef.current.style.setProperty('--scroll-y', '0px'); }}><span>&#x279A;</span></div>
       </div>
     </div>
   )
@@ -255,15 +242,13 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-        
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
         .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
-        .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
+        .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -279,15 +264,29 @@ export default function App() {
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         
-        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
-        
-        /* PARALLAX FIX: Using CSS calc and Variables for smoothness */
+        /* THE PARALLAX BOX */
+        .case-header { 
+          width: 100%; 
+          height: 50vh; 
+          overflow: hidden; 
+          position: relative; 
+          flex-shrink: 0; 
+          background-color: #eae5e3; 
+        }
+
         .case-header-img { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 140%; 
-            background-size: cover; background-position: center; background-repeat: no-repeat;
-            /* Move at 40% of scroll speed */
-            transform: translateY(calc(var(--scroll-y, 0px) * 0.4));
-            will-change: transform;
+          position: absolute; 
+          top: 0; 
+          left: 0; 
+          width: 100%; 
+          /* Image is 80vh high inside a 50vh box (30vh travel) */
+          height: 80vh; 
+          background-size: cover; 
+          background-position: center; 
+          background-repeat: no-repeat;
+          /* Calculation: Move up -30vh over the course of 50vh scroll (30/50 = 0.6) */
+          transform: translateY(calc(var(--scroll-y, 0px) * -0.6));
+          will-change: transform;
         }
 
         .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
@@ -300,9 +299,7 @@ export default function App() {
         @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
         @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
       `}</style>
-      <Routes>
-        <Route path="/" element={<MainScene />} />
-      </Routes>
+      <Routes><Route path="/" element={<MainScene />} /></Routes>
     </Router>
   )
 }
