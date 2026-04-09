@@ -4,7 +4,7 @@ import { useGLTF, Environment, useProgress } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
-import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 
 // --- DESIGN CONSTANTS ---
 const NEW_WHITE = new THREE.Color('#eae5e3') 
@@ -23,15 +23,17 @@ const CARTRIDGE_DATA = [
 
 // --- COMPONENTS ---
 
-function Loader({ finished, onExit }) {
+function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
+  const [isExiting, setIsExiting] = useState(false)
 
   useEffect(() => {
-    if (videoRef.current) {
-      videoRef.current.play().catch(() => {})
+    const vid = videoRef.current
+    if (vid) {
+      vid.play().catch(() => {})
       const pauseTimer = setTimeout(() => {
-        if (videoRef.current && progress < 100) videoRef.current.pause()
+        if (progress < 100) vid.pause()
       }, 500)
       return () => clearTimeout(pauseTimer)
     }
@@ -41,14 +43,17 @@ function Loader({ finished, onExit }) {
     if (progress === 100) {
       const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
-        setTimeout(() => onExit(), 500) 
+        setTimeout(() => {
+          setIsExiting(true)
+          setTimeout(onExit, 1000)
+        }, 500) 
       }, 300) 
       return () => clearTimeout(resumeTimer)
     }
   }, [progress, onExit])
 
   return (
-    <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
+    <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
         <div className="loader-bar-container">
@@ -105,6 +110,7 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     lastActive.current = active
     const localTime = t - startTime.current
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
+    
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -124,11 +130,7 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh 
-          onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
-          onPointerOut={() => { if(!isMobile) onHover(null); }} 
-          onClick={(e) => { e.stopPropagation(); onClick(index); }}
-        >
+        <mesh onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} onPointerOut={() => { if(!isMobile) onHover(null); }} onClick={(e) => { e.stopPropagation(); onClick(index); }}>
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -138,16 +140,13 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   )
 }
 
-export default function App() {
+// --- CONTENT SCENE ---
+
+function MainScene() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [activeCaseStudy, setActiveCaseStudy] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  const [isLoaderActive, setIsLoaderActive] = useState(() => !sessionStorage.getItem('visited'))
-
-  useEffect(() => {
-    if (activeCaseStudy) document.title = `${activeCaseStudy.title} | itsconnorbannister`
-    else document.title = "Selection | itsconnorbannister"
-  }, [activeCaseStudy])
+  const [showLoader, setShowLoader] = useState(true)
 
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -155,117 +154,121 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  useEffect(() => {
+    if (activeCaseStudy) document.title = `${activeCaseStudy.title} | itsconnorbannister`
+    else document.title = "Selection | itsconnorbannister"
+  }, [activeCaseStudy])
+
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
-  const handleSelect = (index) => {
-    const targetIndex = index !== undefined ? index : hoveredIndex;
-    if (targetIndex !== null) {
-      if (isMobile && hoveredIndex !== targetIndex) setHoveredIndex(targetIndex)
-      else setActiveCaseStudy(CARTRIDGE_DATA[targetIndex])
+  const handleSelect = (idx) => {
+    const targetIdx = idx !== undefined ? idx : hoveredIndex
+    if (targetIdx !== null) {
+      if (isMobile && hoveredIndex !== targetIdx) setHoveredIndex(targetIdx)
+      else setActiveCaseStudy(CARTRIDGE_DATA[targetIdx])
     }
   }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && activeCaseStudy) { setActiveCaseStudy(null); return; }
-      if (isLoaderActive || activeCaseStudy) return
+      if (activeCaseStudy && e.key === 'Escape') { setActiveCaseStudy(null); return; }
+      if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') moveLeft()
       if (e.key === 'ArrowRight') moveRight()
       if (e.key === 'Enter') handleSelect()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hoveredIndex, isLoaderActive, activeCaseStudy])
+  }, [hoveredIndex, activeCaseStudy, showLoader])
 
   return (
-    <Router>
-      <div className="home-wrapper">
-        <style>{`
-          @font-face { font-family: 'Thunder'; src: url('/Thunder-BoldLC.ttf') format('truetype'); font-weight: bold; font-style: normal; }
-          * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-          html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
-          .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-
-          .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.2s cubic-bezier(0.85, 0, 1, 1); }
-          .loader-screen.slide-down { transform: translateY(100%); }
-          .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
-          .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
-          .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
-          .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
-          .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
-          .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
-          .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
-          .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
-          .canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
-          .canvas-container canvas { pointer-events: auto; }
-          .ui-overlay { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box; }
-          .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
-          .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
-          .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
-          .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
-          .nav-button:active, .select-button:active { transform: scale(0.9); }
-
-          .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
-          .case-study-overlay.open { transform: translateY(0); }
-          
-          .case-header { width: 100%; height: 50vh; background-color: #eae5e3; background-size: cover; background-position: center; flex-shrink: 0; }
-          .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; min-height: 100vh; }
-          .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
-          .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
-          .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 600; transition: all 0.3s; }
-          .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
-          .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
-          .back-bubble:hover span { color: ${DARK_THEME}; }
-
-          @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
-          @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
-        `}</style>
-
-        {isLoaderActive && <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />}
-
-        <div className="bg-container">
-          <div className="bg-layer base-bg" />
-          {CARTRIDGE_DATA.map((item, i) => (
-            <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
-          ))}
-        </div>
-
-        <div className="ui-overlay">
-          <div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div>
-          <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => hoveredIndex !== null && setActiveCaseStudy(CARTRIDGE_DATA[hoveredIndex])}>Select</div>
-          <div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div>
-        </div>
-
-        <div className="canvas-container">
-          <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
-            <Suspense fallback={null}>
-               <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-               <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-                  {CARTRIDGE_DATA.map((item, i) => (
-                    <GbaInstance 
-                      key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
-                      onHover={setHoveredIndex} onClick={handleCartridgeClick} position={[i * -0.28, 0, i * -0.15]} 
-                    />
-                  ))}
-               </group>
-            </Suspense>
-            <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
-          </Canvas>
-        </div>
-
-        <div className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
-          <div 
-            className="case-header" 
-            style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} 
-          />
-          <div className="case-content">
-            <h1 className="header-title">{activeCaseStudy?.title}</h1>
-            <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
-          </div>
-          <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
-        </div>
+    <div className="home-wrapper">
+      {showLoader && <Loader onExit={() => setShowLoader(false)} />}
+      
+      <div className="bg-container">
+        <div className="bg-layer base-bg" />
+        {CARTRIDGE_DATA.map((item, i) => (
+          <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
+        ))}
       </div>
+
+      <div className="ui-overlay">
+        <div className="nav-button" onClick={moveLeft}> &lt; </div>
+        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
+        <div className="nav-button" onClick={moveRight}> &gt; </div>
+      </div>
+
+      <div className="canvas-container">
+        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+          <Suspense fallback={null}>
+             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
+             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+                {CARTRIDGE_DATA.map((item, i) => (
+                  <GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />
+                ))}
+             </group>
+          </Suspense>
+          <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
+        </Canvas>
+      </div>
+
+      <div className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
+        <div className="case-header" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} />
+        <div className="case-content">
+          <h1 className="header-title">{activeCaseStudy?.title}</h1>
+          <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
+        </div>
+        <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
+      </div>
+    </div>
+  )
+}
+
+// --- ROOT APP ---
+
+export default function App() {
+  return (
+    <Router>
+      <style>{`
+        @font-face { font-family: 'Thunder'; src: url('/Thunder-BoldLC.ttf') format('truetype'); font-weight: bold; font-style: normal; }
+        * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
+        .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+        .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.2s cubic-bezier(0.85, 0, 1, 1); }
+        .loader-screen.slide-down-exit { transform: translateY(100%); }
+        .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
+        .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+        .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
+        .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+        .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+        .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
+        .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
+        .canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
+        .canvas-container canvas { pointer-events: auto; }
+        .ui-overlay { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box; }
+        .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
+        .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
+        .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
+        .nav-button:active, .select-button:active { transform: scale(0.9); }
+        .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
+        .case-study-overlay.open { transform: translateY(0); }
+        .case-header { width: 100%; height: 50vh; background-color: #eae5e3; background-size: cover; background-position: center; flex-shrink: 0; }
+        .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; min-height: 100vh; }
+        .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
+        .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
+        .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 600; transition: all 0.3s; }
+        .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
+        .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
+        .back-bubble:hover span { color: ${DARK_THEME}; }
+        @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
+        @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
+      `}</style>
+      
+      <Routes>
+        <Route path="/" element={<MainScene />} />
+      </Routes>
     </Router>
   )
 }
