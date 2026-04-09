@@ -29,14 +29,14 @@ function Loader({ finished, onExit }) {
 
   useEffect(() => {
     if (progress === 100) {
-      // Small 300ms pause at 100% for the user to register it's done
+      // Trigger exactly when loading finishes
       const triggerTimer = setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.play().catch(e => console.log("Video error", e))
         }
-        // START TRANSITION IMMEDIATELY AS VIDEO PLAYS
+        // Transitions down IMMEDIATELY as the wink starts
         onExit()
-      }, 300) 
+      }, 400) 
 
       return () => clearTimeout(triggerTimer)
     }
@@ -45,14 +45,7 @@ function Loader({ finished, onExit }) {
   return (
     <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
       <div className="loader-content">
-        <video 
-          ref={videoRef}
-          src="/wink.mp4" 
-          muted 
-          playsInline 
-          className="wink-video"
-          preload="auto"
-        />
+        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
         <div className="loader-bar-container">
           <div className="loader-bar" style={{ width: `${progress}%` }} />
         </div>
@@ -217,8 +210,8 @@ export default function App() {
           position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
           background: ${DARK_THEME}; z-index: 1000;
           display: flex; align-items: center; justify-content: center;
-          /* UPDATED: 1 second duration + accelerating ramp curve */
-          transition: transform 1.0s cubic-bezier(0.5, 0, 1, 1);
+          /* UPDATED RAMP: Starts with zero velocity, accelerates to max speed */
+          transition: transform 1s cubic-bezier(0.85, 0, 1, 1);
         }
         .loader-screen.slide-down { transform: translateY(100%); }
 
