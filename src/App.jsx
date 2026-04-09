@@ -23,38 +23,49 @@ const CARTRIDGE_DATA = [
 
 // --- COMPONENTS ---
 
-function Loader({ finished, onExit }) {
+function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
-  const [hasStartedResume, setHasStartedResume] = useState(false)
+  const [isExiting, setIsExiting] = useState(false)
+  const hasTriggeredEnd = useRef(false)
 
-  // 1. Start playing INSTANTLY on load, pause at 0.5s
+  // 1. Initial play and conditional pause
   useEffect(() => {
     const vid = videoRef.current
-    if (vid) {
-      vid.play().catch(() => {})
-      const pauseTimer = setTimeout(() => {
-        if (progress < 100) vid.pause()
-      }, 500)
-      return () => clearTimeout(pauseTimer)
-    }
+    if (!vid) return
+    vid.play().catch(() => {})
+
+    const checkTimer = setTimeout(() => {
+      // Only pause if we aren't at 100% yet
+      if (progress < 100 && vid) {
+        vid.pause()
+      }
+    }, 500)
+
+    return () => clearTimeout(checkTimer)
   }, [])
 
-  // 2. Resume when progress is 100%
+  // 2. Watch progress and trigger final sequence
   useEffect(() => {
-    if (progress === 100 && !hasStartedResume) {
-      setHasStartedResume(true)
-      const resumeTimer = setTimeout(() => {
-        if (videoRef.current) videoRef.current.play().catch(() => {})
-        // Transition down 500ms after resume
-        setTimeout(() => onExit(), 500) 
-      }, 200) 
-      return () => clearTimeout(resumeTimer)
+    if (progress === 100 && !hasTriggeredEnd.current) {
+      hasTriggeredEnd.current = true
+      
+      // Ensure video resumes
+      if (videoRef.current) videoRef.current.play().catch(() => {})
+
+      // Wait 500ms into the animation to slide down
+      const slideTimer = setTimeout(() => {
+        setIsExiting(true)
+        // Wait for CSS transition to finish before unmounting
+        setTimeout(onExit, 1100)
+      }, 500)
+
+      return () => clearTimeout(slideTimer)
     }
-  }, [progress, onExit, hasStartedResume])
+  }, [progress, onExit])
 
   return (
-    <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
+    <div className={`loader-screen ${isExiting ? 'slide-down' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
         <div className="loader-bar-container">
@@ -183,7 +194,7 @@ function MainScene() {
 
   return (
     <div className="home-wrapper">
-      <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />
+      {isLoaderActive && <Loader onExit={() => setIsLoaderActive(false)} />}
       
       <div className="bg-container">
         <div className="bg-layer base-bg" />
@@ -212,21 +223,18 @@ function MainScene() {
         </Canvas>
       </div>
 
-      {/* Case Study Overlay */}
       <div className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header">
            <div 
              className="case-header-parallax" 
              style={{ 
                backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none',
-               backgroundColor: '#eae5e3'
              }} 
            />
         </div>
         <div className="case-content">
           <h1 className="header-title">{activeCaseStudy?.title}</h1>
           <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
-          {/* Spacer to enable scrolling */}
           <div style={{ height: '100vh' }} />
         </div>
         <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
@@ -243,6 +251,7 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+        
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); }
         .loader-screen.slide-down { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -250,6 +259,7 @@ export default function App() {
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -265,14 +275,11 @@ export default function App() {
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         
-        /* IMPROVED PARALLAX HEADER */
-        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; }
+        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-parallax { 
-            position: fixed; /* Attach image to viewport */
-            top: 0; left: 0; 
-            width: 100%; height: 50vh; 
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%; 
             background-size: cover; background-position: center; background-repeat: no-repeat;
-            z-index: -1; 
+            background-attachment: fixed; /* Parallax works inside absolute containers when structured this way */
         }
 
         .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
@@ -283,7 +290,11 @@ export default function App() {
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
         .back-bubble:hover span { color: ${DARK_THEME}; }
         @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
-        @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } .case-header-parallax { position: absolute; height: 100%; } }
+        @media (max-width: 768px) { 
+            .header-title { font-size: 80px; } 
+            .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; }
+            .case-header-parallax { background-attachment: scroll; } 
+        }
       `}</style>
       <Routes>
         <Route path="/" element={<MainScene />} />
