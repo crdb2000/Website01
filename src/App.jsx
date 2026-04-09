@@ -29,17 +29,16 @@ function Loader({ finished, onExit }) {
 
   useEffect(() => {
     if (progress === 100) {
-      const playTimer = setTimeout(() => {
+      // Small 300ms pause at 100% for the user to register it's done
+      const triggerTimer = setTimeout(() => {
         if (videoRef.current) {
           videoRef.current.play().catch(e => console.log("Video error", e))
         }
-      }, 400) // Slight pause at 100%
-
-      const exitTimer = setTimeout(() => {
+        // START TRANSITION IMMEDIATELY AS VIDEO PLAYS
         onExit()
-      }, 2400) // Match this to your wink animation length
+      }, 300) 
 
-      return () => { clearTimeout(playTimer); clearTimeout(exitTimer); }
+      return () => clearTimeout(triggerTimer)
     }
   }, [progress, onExit])
 
@@ -214,31 +213,22 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         
-        /* Loader Styles */
         .loader-screen {
           position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
           background: ${DARK_THEME}; z-index: 1000;
           display: flex; align-items: center; justify-content: center;
-          /* Transitioning to slide DOWN */
-          transition: transform 1.2s cubic-bezier(0.85, 0, 0.15, 1);
+          /* UPDATED: 1 second duration + accelerating ramp curve */
+          transition: transform 1.0s cubic-bezier(0.5, 0, 1, 1);
         }
         .loader-screen.slide-down { transform: translateY(100%); }
 
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
-        
-        .wink-video { 
-          width: 500px; height: 500px; 
-          max-width: 80vw; max-height: 80vw; /* Safety for mobile */
-          margin-bottom: 20px; 
-          object-fit: cover;
-        }
-
+        .wink-video { width: 500px; height: 500px; max-width: 80vw; max-height: 80vw; margin-bottom: 20px; object-fit: cover; }
         .loader-bar-container { width: 300px; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
-        .main-content { width: 100%; height: 100%; transition: opacity 1s ease; }
-        .main-content.hidden { opacity: 0; }
+        .main-content { width: 100%; height: 100%; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
