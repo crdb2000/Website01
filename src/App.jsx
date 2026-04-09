@@ -4,7 +4,7 @@ import { useGLTF, Environment, useProgress } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
-import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link, useLocation } from 'react-router-dom'
 
 // --- DESIGN CONSTANTS ---
 const NEW_WHITE = new THREE.Color('#eae5e3') 
@@ -21,7 +21,7 @@ const CARTRIDGE_DATA = [
   { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further' }
 ]
 
-// --- LOADING COMPONENT ---
+// --- COMPONENTS ---
 
 function Loader({ finished, onExit }) {
   const { progress } = useProgress()
@@ -41,7 +41,11 @@ function Loader({ finished, onExit }) {
     if (progress === 100) {
       const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
-        setTimeout(() => onExit(), 500) 
+        setTimeout(() => {
+            // Mark as visited in session storage before exiting
+            sessionStorage.setItem('visited', 'true')
+            onExit()
+        }, 500) 
       }, 300) 
       return () => clearTimeout(resumeTimer)
     }
@@ -59,8 +63,6 @@ function Loader({ finished, onExit }) {
     </div>
   )
 }
-
-// --- SHARED COMPONENTS ---
 
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
@@ -141,9 +143,12 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
 function Home() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  const [isLoaderActive, setIsLoaderActive] = useState(true)
-  const { progress } = useProgress()
+  
+  // Check if we've already loaded in this session
+  const [isLoaderActive, setIsLoaderActive] = useState(() => !sessionStorage.getItem('visited'))
+  
   const navigate = useNavigate()
+  const location = useLocation()
 
   useEffect(() => { document.title = "Selection | itsconnorbannister" }, [])
   useLayoutEffect(() => {
@@ -163,13 +168,14 @@ function Home() {
   }
 
   return (
-    <div className="home-wrapper">
-      <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />
-      <div className="main-content">
+    <div className="page-fade-in home-wrapper">
+      {isLoaderActive && <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />}
+      
+      <div className="home-content">
         <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
         <div className="ui-overlay"><div className="nav-button" onClick={moveLeft}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={moveRight}> &gt; </div></div>
         <div className="canvas-container">
-          <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+          <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
             <Suspense fallback={null}>
                <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
                <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
@@ -191,25 +197,17 @@ function CaseStudy() {
   
   useEffect(() => { 
     document.title = `${displayTitle} | itsconnorbannister`
-    // Auto-scroll to top when page loads
     window.scrollTo(0, 0)
   }, [displayTitle])
 
   return (
-    <div className="case-study-page">
-      {/* 1. Header Image (White Square Placeholder) */}
+    <div className="page-fade-in case-study-page">
       <div className="case-header" />
-
-      {/* 2. Project Title */}
       <div className="case-content">
         <h1 className="header-title">{displayTitle}</h1>
         <p className="case-description">Case study details for {displayTitle} coming soon.</p>
       </div>
-
-      {/* 3. Return Bubble (Bottom Left) */}
-      <Link to="/" className="back-bubble">
-        <span>&#x279A;</span>
-      </Link>
+      <Link to="/" className="back-bubble"><span>&#x279A;</span></Link>
     </div>
   )
 }
@@ -222,8 +220,17 @@ export default function App() {
       <style>{`
         @font-face { font-family: 'Thunder'; src: url('/Thunder-BoldLC.ttf') format('truetype'); font-weight: bold; font-style: normal; }
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body, #root { width: 100%; height: 100%; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         
+        /* Page Transition Animation */
+        .page-fade-in {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); }
         .loader-screen.slide-down { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -232,8 +239,7 @@ export default function App() {
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
-        .main-content { width: 100%; height: 100%; }
-        .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+        .home-wrapper, .home-content { width: 100%; height: 100%; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -246,93 +252,18 @@ export default function App() {
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
 
-        /* CASE STUDY SPECIFIC STYLES */
-        .case-study-page { 
-          width: 100vw; min-height: 100vh; 
-          background: ${DARK_THEME}; 
-          color: #eae5e3; 
-          overflow-x: hidden;
-          overflow-y: auto;
-          display: flex; flex-direction: column; align-items: center;
-        }
+        .case-study-page { width: 100vw; min-height: 100vh; background: ${DARK_THEME}; color: #eae5e3; overflow-x: hidden; overflow-y: auto; display: flex; flex-direction: column; align-items: center; }
+        .case-header { width: 100%; height: 50vh; background-color: #eae5e3; }
+        .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; }
+        .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
+        .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
+        .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; text-decoration: none; z-index: 200; transition: all 0.3s; }
+        .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
+        .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
+        .back-bubble:hover span { color: ${DARK_THEME}; }
 
-        .case-header {
-          width: 100%;
-          height: 50vh; /* Half the screen height */
-          background-color: #eae5e3; /* White square placeholder */
-        }
-
-        .case-content {
-          width: 100%;
-          max-width: 1200px;
-          padding: 80px 40px;
-          text-align: center;
-        }
-
-        .header-title { 
-          font-family: 'Thunder', sans-serif; 
-          font-size: 120px; line-height: 0.9; 
-          text-transform: uppercase; 
-          margin-bottom: 20px; 
-        }
-
-        .case-description {
-          font-family: degular, sans-serif;
-          font-size: 18px;
-          opacity: 0.7;
-          max-width: 600px;
-          margin: 0 auto;
-        }
-
-        /* RETURN BUBBLE */
-        .back-bubble {
-          position: fixed;
-          bottom: 40px;
-          left: 40px;
-          width: 60px;
-          height: 60px;
-          background: rgba(234, 229, 227, 0.1);
-          backdrop-filter: blur(15px);
-          -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(234, 229, 227, 0.2);
-          border-radius: 50%;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          text-decoration: none;
-          z-index: 200;
-          transition: all 0.3s;
-        }
-
-        .back-bubble span {
-          color: #eae5e3;
-          font-size: 24px;
-          /* U+279A points right, so we rotate 180deg to make it point back (left) */
-          transform: rotate(180deg);
-          line-height: 0;
-          margin-top: -2px; /* Visual center tweak */
-        }
-
-        .back-bubble:hover {
-          background: #eae5e3;
-          transform: scale(1.1);
-        }
-
-        .back-bubble:hover span {
-          color: ${DARK_THEME};
-        }
-
-        @media (min-width: 769px) { 
-          .ui-overlay { bottom: 80px; max-width: 600px; } 
-          .nav-button { width: 70px; height: 70px; font-size: 24px; } 
-          .select-button { height: 50px; font-size: 16px; } 
-          .header-title { font-size: 200px; } 
-        }
-        
-        @media (max-width: 768px) {
-          .header-title { font-size: 80px; }
-          .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; }
-        }
+        @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
+        @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
       `}</style>
       <Routes>
         <Route path="/" element={<Home />} />
