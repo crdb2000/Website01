@@ -28,10 +28,13 @@ function Loader({ onExit }) {
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
 
+  // Force video to Start at Frame 0 and handle play/pause
   useEffect(() => {
     const vid = videoRef.current
     if (vid) {
+      vid.currentTime = 0 // FORCE START AT FRAME 0
       vid.play().catch(() => {})
+      
       const pauseTimer = setTimeout(() => {
         if (progress < 100) vid.pause()
       }, 500)
@@ -140,15 +143,21 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   )
 }
 
-// --- CONTENT SCENE ---
+// --- MAIN APPLICATION ---
 
 function MainScene() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [activeCaseStudy, setActiveCaseStudy] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [showLoader, setShowLoader] = useState(true)
-  const [scrollPos, setScrollPos] = useState(0)
   const overlayRef = useRef()
+
+  // SMOOTH PARALLAX LOGIC
+  const onOverlayScroll = (e) => {
+    const scrolled = e.target.scrollTop;
+    // Set a CSS variable on the overlay so the GPU handles the movement
+    overlayRef.current.style.setProperty('--scroll-y', `${scrolled}px`);
+  }
 
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -160,11 +169,6 @@ function MainScene() {
     if (activeCaseStudy) document.title = `${activeCaseStudy.title} | itsconnorbannister`
     else document.title = "Selection | itsconnorbannister"
   }, [activeCaseStudy])
-
-  // Parallax Scroll Listener
-  const onOverlayScroll = (e) => {
-    setScrollPos(e.target.scrollTop)
-  }
 
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
@@ -219,7 +223,6 @@ function MainScene() {
         </Canvas>
       </div>
 
-      {/* Case Study Overlay with Scroll Listener */}
       <div 
         ref={overlayRef}
         onScroll={onOverlayScroll}
@@ -230,22 +233,19 @@ function MainScene() {
              className="case-header-img" 
              style={{ 
                backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none',
-               transform: `translateY(${scrollPos * 0.4}px)` // THE PARALLAX MATH
              }} 
            />
         </div>
         <div className="case-content">
           <h1 className="header-title">{activeCaseStudy?.title}</h1>
           <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
-          <div style={{ height: '100vh' }} /> {/* Spacer for scrolling */}
+          <div style={{ height: '120vh' }} />
         </div>
-        <div className="back-bubble" onClick={() => { setActiveCaseStudy(null); setScrollPos(0); }}><span>&#x279A;</span></div>
+        <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
       </div>
     </div>
   )
 }
-
-// --- ROOT APP ---
 
 export default function App() {
   return (
@@ -255,20 +255,14 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-
-        .loader-screen { 
-          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
-          background: ${DARK_THEME}; z-index: 1000; 
-          display: flex; align-items: center; justify-content: center; 
-          transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1);
-          will-change: transform; /* SMOOTHNESS FIX */
-        }
+        
+        .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
         .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
-        .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+        .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
@@ -285,11 +279,14 @@ export default function App() {
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         
-        /* PARALLAX ELEMENTS */
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
+        
+        /* PARALLAX FIX: Using CSS calc and Variables for smoothness */
         .case-header-img { 
-            position: absolute; top: 0; left: 0; width: 100%; height: 120%; /* Taller to allow room for movement */
+            position: absolute; top: 0; left: 0; width: 100%; height: 140%; 
             background-size: cover; background-position: center; background-repeat: no-repeat;
+            /* Move at 40% of scroll speed */
+            transform: translateY(calc(var(--scroll-y, 0px) * 0.4));
             will-change: transform;
         }
 
