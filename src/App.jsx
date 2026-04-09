@@ -1,6 +1,6 @@
 import { Suspense, useState, useRef, useLayoutEffect, useMemo, useEffect } from 'react'
 import { Canvas, useFrame } from '@react-three/fiber'
-import { useGLTF, Environment } from '@react-three/drei'
+import { useGLTF, Environment, useProgress } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
@@ -20,6 +20,24 @@ const CARTRIDGE_DATA = [
   { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice' },
   { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further' }
 ]
+
+// --- LOADING COMPONENT ---
+
+function Loader({ finished }) {
+  const { progress } = useProgress()
+  
+  return (
+    <div className={`loader-screen ${finished ? 'fade-out' : ''}`}>
+      <div className="loader-content">
+        <h1 className="loader-title">itsconnorbannister</h1>
+        <div className="loader-bar-container">
+          <div className="loader-bar" style={{ width: `${progress}%` }} />
+        </div>
+        <p className="loader-text">Loading Collection {Math.round(progress)}%</p>
+      </div>
+    </div>
+  )
+}
 
 // --- SHARED COMPONENTS ---
 
@@ -64,18 +82,11 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   useFrame((state) => {
     const t = state.clock.getElapsedTime()
     const f = factor.get()
-
-    // Tracking time for the pulse start
     if (active && !lastActive.current) startTime.current = t
     lastActive.current = active
-
     const localTime = t - startTime.current
-    
-    // THE PULSE LOGIC (Restored):
-    // activePulse creates a sine wave between roughly 2.5 and 15
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
     const restIntensity = 2.5 
-
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -83,12 +94,10 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
       groupRef.current.rotation.x = (Math.cos(t * 1 + index) * 0.015) * f
       groupRef.current.rotation.z = (Math.sin(t * 1 + index) * 0.01) * f
     }
-
     clone.traverse((child) => {
       if (child.isMesh) {
         child.material.color.lerpColors(NEW_WHITE, FILL_COLOR, f)
         child.material.emissive.lerpColors(NEW_WHITE, FILL_COLOR, f)
-        // Apply the pulsing intensity lerp
         child.material.emissiveIntensity = THREE.MathUtils.lerp(restIntensity, activePulse, f)
       }
     })
@@ -97,11 +106,7 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh 
-          onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
-          onPointerOut={() => { if(!isMobile) onHover(null); }} 
-          onClick={(e) => { e.stopPropagation(); onClick(index); }}
-        >
+        <mesh onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} onPointerOut={() => { if(!isMobile) onHover(null); }} onClick={(e) => { e.stopPropagation(); onClick(index); }}>
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -116,9 +121,19 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
 function Home() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
+  const [isLoading, setIsLoading] = useState(true)
+  const { active, progress } = useProgress()
   const navigate = useNavigate()
 
-  useEffect(() => { document.title = "Selection | itsconnorbannister" }, [])
+  useEffect(() => {
+    document.title = "Selection | itsconnorbannister"
+    // Wait for assets to be 100% AND a minimum timer for a smooth experience
+    if (progress === 100) {
+      const timer = setTimeout(() => setIsLoading(false), 2000) // 2 second extra buffer after loading
+      return () => clearTimeout(timer)
+    }
+  }, [progress])
+
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -136,44 +151,38 @@ function Home() {
     }
   }
 
-  useEffect(() => {
-    const handleKeyDown = (e) => {
-      if (e.key === 'ArrowLeft') moveLeft()
-      if (e.key === 'ArrowRight') moveRight()
-      if (e.key === 'Enter') handleSelect()
-    }
-    window.addEventListener('keydown', handleKeyDown)
-    return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hoveredIndex, isMobile])
-
   return (
     <div className="home-wrapper">
-      <div className="bg-container">
-        <div className="bg-layer base-bg" />
-        {CARTRIDGE_DATA.map((item, i) => (
-          <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
-        ))}
-      </div>
-      <div className="ui-overlay">
-        <div className="nav-button" onClick={moveLeft}> &lt; </div>
-        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
-        <div className="nav-button" onClick={moveRight}> &gt; </div>
-      </div>
-      <div className="canvas-container">
-        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
-          <Suspense fallback={null}>
-             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-                {CARTRIDGE_DATA.map((item, i) => (
-                  <GbaInstance 
-                    key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
-                    onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
-                  />
-                ))}
-             </group>
-          </Suspense>
-          <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
-        </Canvas>
+      <Loader finished={!isLoading} />
+      
+      <div className={`main-content ${isLoading ? 'hidden' : 'visible'}`}>
+        <div className="bg-container">
+          <div className="bg-layer base-bg" />
+          {CARTRIDGE_DATA.map((item, i) => (
+            <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
+          ))}
+        </div>
+        <div className="ui-overlay">
+          <div className="nav-button" onClick={moveLeft}> &lt; </div>
+          <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
+          <div className="nav-button" onClick={moveRight}> &gt; </div>
+        </div>
+        <div className="canvas-container">
+          <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+            <Suspense fallback={null}>
+               <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
+               <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+                  {CARTRIDGE_DATA.map((item, i) => (
+                    <GbaInstance 
+                      key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
+                      onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
+                    />
+                  ))}
+               </group>
+            </Suspense>
+            <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
+          </Canvas>
+        </div>
       </div>
     </div>
   )
@@ -184,7 +193,6 @@ function CaseStudy() {
   const project = CARTRIDGE_DATA.find(p => p.id === id)
   const displayTitle = project ? project.title : id
   useEffect(() => { document.title = `${displayTitle} | itsconnorbannister` }, [displayTitle])
-
   return (
     <div className="case-study-page">
       <Link to="/" className="home-btn">Back to collection</Link>
@@ -209,6 +217,25 @@ export default function App() {
         }
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
+        
+        /* Loader Styles */
+        .loader-screen {
+          position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+          background: ${DARK_THEME}; z-index: 1000;
+          display: flex; align-items: center; justify-content: center;
+          transition: transform 1s cubic-bezier(0.85, 0, 0.15, 1), opacity 1s ease;
+        }
+        .loader-screen.fade-out { transform: translateY(-100%); pointer-events: none; }
+        .loader-content { text-align: center; width: 80%; max-width: 400px; }
+        .loader-title { font-family: 'Thunder'; font-size: 40px; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px; }
+        .loader-bar-container { width: 100%; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
+        .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
+        .loader-text { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; }
+
+        .main-content { width: 100%; height: 100%; transition: opacity 1s ease; }
+        .main-content.hidden { opacity: 0; }
+        .main-content.visible { opacity: 1; }
+
         .home-wrapper { width: 100vw; height: 100vh; position: relative; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
