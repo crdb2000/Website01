@@ -4,7 +4,7 @@ import { useGLTF, Environment, useProgress } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
-import { BrowserRouter as Router, Routes, Route, useNavigate, useParams, Link } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
 
 // --- DESIGN CONSTANTS ---
 const NEW_WHITE = new THREE.Color('#eae5e3') 
@@ -23,49 +23,32 @@ const CARTRIDGE_DATA = [
 
 // --- COMPONENTS ---
 
-function Loader({ onExit }) {
+function Loader({ finished, onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
-  const [isDone, setIsDone] = useState(false)
-  const [hasStartedTransition, setHasStartedTransition] = useState(false)
 
-  // Initial setup: Start video and pause at 0.5s
   useEffect(() => {
-    const vid = videoRef.current
-    if (vid) {
-      vid.play().catch(() => {})
+    if (videoRef.current) {
+      videoRef.current.play().catch(() => {})
       const pauseTimer = setTimeout(() => {
-        // Only pause if we haven't reached 100% yet
-        if (progress < 100) vid.pause()
-      }, 500)
+        if (videoRef.current && progress < 100) videoRef.current.pause()
+      }, 500) // Pause at 0.5s
       return () => clearTimeout(pauseTimer)
     }
   }, [])
 
-  // Final sequence: When progress hits 100, finish wink then exit
   useEffect(() => {
-    if (progress === 100 && !hasStartedTransition) {
-      setHasStartedTransition(true)
-      
-      const finishAnimation = setTimeout(() => {
+    if (progress === 100) {
+      const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
-        
-        // Wait for mid-wink to drop the curtain
-        setTimeout(() => {
-          setIsDone(true)
-          // Store in localStorage so it persists across refreshes
-          localStorage.setItem('visited_connor', 'true')
-          // Small delay to let the CSS transition start before unmounting
-          setTimeout(onExit, 1000)
-        }, 500)
-      }, 400)
-
-      return () => clearTimeout(finishAnimation)
+        setTimeout(() => onExit(), 500) // Slide down mid-animation
+      }, 300) 
+      return () => clearTimeout(resumeTimer)
     }
-  }, [progress, onExit, hasStartedTransition])
+  }, [progress, onExit])
 
   return (
-    <div className={`loader-screen ${isDone ? 'slide-down-exit' : ''}`}>
+    <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
         <div className="loader-bar-container">
@@ -121,7 +104,10 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     if (active && !lastActive.current) startTime.current = t
     lastActive.current = active
     const localTime = t - startTime.current
+    
+    // Pulsing Glow Logic Restored
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
+    
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -141,7 +127,11 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} onPointerOut={() => { if(!isMobile) onHover(null); }} onClick={(e) => { e.stopPropagation(); onClick(index); }}>
+        <mesh 
+          onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
+          onPointerOut={() => { if(!isMobile) onHover(null); }} 
+          onClick={(e) => { e.stopPropagation(); onClick(index); }}
+        >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -151,15 +141,22 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   )
 }
 
-export default function App() {
+// --- MAIN APPLICATION ---
+
+function MainScene() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [activeCaseStudy, setActiveCaseStudy] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  
-  // Logic: Check if we have ALREADY visited in this browser
-  const [showLoader, setShowLoader] = useState(() => {
-    return localStorage.getItem('visited_connor') !== 'true'
-  })
+  const [isLoaderActive, setIsLoaderActive] = useState(true)
+
+  // Dynamic Tab Titles
+  useEffect(() => {
+    if (activeCaseStudy) {
+      document.title = `${activeCaseStudy.title} | itsconnorbannister`
+    } else {
+      document.title = "Selection | itsconnorbannister"
+    }
+  }, [activeCaseStudy])
 
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
@@ -167,38 +164,96 @@ export default function App() {
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
+  const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
+  const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
+  
+  const handleSelect = (index) => {
+    const targetIndex = index !== undefined ? index : hoveredIndex;
+    if (targetIndex !== null) {
+      if (isMobile && hoveredIndex !== targetIndex) setHoveredIndex(targetIndex)
+      else setActiveCaseStudy(CARTRIDGE_DATA[targetIndex])
+    }
+  }
+
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activeCaseStudy || showLoader) return
-      if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
-      if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
-      if (e.key === 'Enter' && hoveredIndex !== null) setActiveCaseStudy(CARTRIDGE_DATA[hoveredIndex])
+      if (isLoaderActive || activeCaseStudy) return
+      if (e.key === 'ArrowLeft') moveLeft()
+      if (e.key === 'ArrowRight') moveRight()
+      if (e.key === 'Enter') handleSelect()
     }
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [hoveredIndex, activeCaseStudy, showLoader])
+  }, [hoveredIndex, isLoaderActive, activeCaseStudy])
 
   return (
-    <div className="main-viewport">
+    <div className="home-wrapper">
+      <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />
+      
+      <div className="bg-container">
+        <div className="bg-layer base-bg" />
+        {CARTRIDGE_DATA.map((item, i) => (
+          <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
+        ))}
+      </div>
+
+      <div className="ui-overlay">
+        <div className="nav-button" onClick={moveLeft}> &lt; </div>
+        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
+        <div className="nav-button" onClick={moveRight}> &gt; </div>
+      </div>
+
+      <div className="canvas-container">
+        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+          <Suspense fallback={null}>
+             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
+             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+                {CARTRIDGE_DATA.map((item, i) => (
+                  <GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />
+                ))}
+             </group>
+          </Suspense>
+          <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
+        </Canvas>
+      </div>
+
+      {/* Case Study Overlay */}
+      <div className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
+        <div className="case-header" />
+        <div className="case-content">
+          <h1 className="header-title">{activeCaseStudy?.title}</h1>
+          <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
+        </div>
+        <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
+      </div>
+    </div>
+  )
+}
+
+export default function App() {
+  return (
+    <Router>
       <style>{`
         @font-face { font-family: 'Thunder'; src: url('/Thunder-BoldLC.ttf') format('truetype'); font-weight: bold; font-style: normal; }
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; }
-        .main-viewport { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
+        
+        .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
 
-        .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1s cubic-bezier(0.85, 0, 1, 1); }
-        .loader-screen.slide-down-exit { transform: translateY(100%); }
+        .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); }
+        .loader-screen.slide-down { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
         .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
-        .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+        .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         .canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .canvas-container canvas { pointer-events: auto; }
+        
         .ui-overlay { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box; }
         .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
         .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
@@ -220,48 +275,10 @@ export default function App() {
         @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
         @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
       `}</style>
-
-      {/* Logic: Only render the Loader component if showLoader is true */}
-      {showLoader && <Loader onExit={() => setShowLoader(false)} />}
-
-      <div className="bg-container">
-        <div className="bg-layer base-bg" />
-        {CARTRIDGE_DATA.map((item, i) => (
-          <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
-        ))}
-      </div>
-
-      <div className="ui-overlay">
-        <div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div>
-        <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => hoveredIndex !== null && setActiveCaseStudy(CARTRIDGE_DATA[hoveredIndex])}>Select</div>
-        <div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div>
-      </div>
-
-      <div className="canvas-container">
-        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
-          <Suspense fallback={null}>
-             <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-                {CARTRIDGE_DATA.map((item, i) => (
-                  <GbaInstance 
-                    key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
-                    onHover={setHoveredIndex} onClick={handleCartridgeClick} position={[i * -0.28, 0, i * -0.15]} 
-                  />
-                ))}
-             </group>
-          </Suspense>
-          <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
-        </Canvas>
-      </div>
-
-      <div className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
-        <div className="case-header" />
-        <div className="case-content">
-          <h1 className="header-title">{activeCaseStudy?.title}</h1>
-          <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
-        </div>
-        <div className="back-bubble" onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
-      </div>
-    </div>
+      
+      <Routes>
+        <Route path="/" element={<MainScene />} />
+      </Routes>
+    </Router>
   )
 }
