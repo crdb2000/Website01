@@ -64,9 +64,18 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   useFrame((state) => {
     const t = state.clock.getElapsedTime()
     const f = factor.get()
+
+    // Tracking time for the pulse start
     if (active && !lastActive.current) startTime.current = t
     lastActive.current = active
+
     const localTime = t - startTime.current
+    
+    // THE PULSE LOGIC (Restored):
+    // activePulse creates a sine wave between roughly 2.5 and 15
+    const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
+    const restIntensity = 2.5 
+
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -74,11 +83,13 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
       groupRef.current.rotation.x = (Math.cos(t * 1 + index) * 0.015) * f
       groupRef.current.rotation.z = (Math.sin(t * 1 + index) * 0.01) * f
     }
+
     clone.traverse((child) => {
       if (child.isMesh) {
         child.material.color.lerpColors(NEW_WHITE, FILL_COLOR, f)
         child.material.emissive.lerpColors(NEW_WHITE, FILL_COLOR, f)
-        child.material.emissiveIntensity = THREE.MathUtils.lerp(2.5, 8.5, f)
+        // Apply the pulsing intensity lerp
+        child.material.emissiveIntensity = THREE.MathUtils.lerp(restIntensity, activePulse, f)
       }
     })
   })
@@ -86,7 +97,11 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} onPointerOut={() => { if(!isMobile) onHover(null); }} onClick={(e) => { e.stopPropagation(); onClick(index); }}>
+        <mesh 
+          onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
+          onPointerOut={() => { if(!isMobile) onHover(null); }} 
+          onClick={(e) => { e.stopPropagation(); onClick(index); }}
+        >
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -112,6 +127,7 @@ function Home() {
 
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
+  
   const handleSelect = (index) => {
     const targetIndex = index !== undefined ? index : hoveredIndex;
     if (targetIndex !== null) {
@@ -140,7 +156,6 @@ function Home() {
       </div>
       <div className="ui-overlay">
         <div className="nav-button" onClick={moveLeft}> &lt; </div>
-        {/* Changed to "Select" (Sentence case) */}
         <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
         <div className="nav-button" onClick={moveRight}> &gt; </div>
       </div>
@@ -148,9 +163,12 @@ function Home() {
         <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.715, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+             <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (
-                  <GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />
+                  <GbaInstance 
+                    key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
+                    onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
+                  />
                 ))}
              </group>
           </Suspense>
@@ -171,7 +189,6 @@ function CaseStudy() {
     <div className="case-study-page">
       <Link to="/" className="home-btn">Back to collection</Link>
       <div className="case-content">
-        {/* Header uses Thunder Font */}
         <h1 className="header-title">{displayTitle}</h1>
         <p>Deep dive content coming soon...</p>
       </div>
@@ -185,88 +202,30 @@ export default function App() {
   return (
     <Router>
       <style>{`
-        /* Load Thunder Bold LC from public folder */
         @font-face {
           font-family: 'Thunder';
           src: url('/Thunder-BoldLC.ttf') format('truetype');
-          font-weight: bold;
-          font-style: normal;
+          font-weight: bold; font-style: normal;
         }
-
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        
-        /* Base: Degular Semi Bold, No All-Caps */
-        html, body, #root { 
-          width: 100%; height: 100%; overflow: hidden; 
-          background-color: ${DARK_THEME}; 
-          font-family: degular, sans-serif; 
-          font-weight: 600; 
-          color: #eae5e3;
-          text-transform: none; 
-        }
-
+        html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         .canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .canvas-container canvas { pointer-events: auto; }
-
-        .ui-overlay {
-          position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%);
-          width: 100%; max-width: 450px; z-index: 100; pointer-events: none;
-          display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box;
-        }
-
+        .ui-overlay { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box; }
         .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
-
-        .nav-button {
-          width: 55px; height: 55px; border-radius: 50%;
-          background: rgba(234, 229, 227, 0.1); 
-          backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(234, 229, 227, 0.15);
-          color: #eae5e3; font-size: 20px;
-          cursor: pointer; transition: all 0.2s; user-select: none;
-        }
-
-        .select-button {
-          height: 45px; padding: 0 35px; border-radius: 40px;
-          background: rgba(234, 229, 227, 0.05);
-          backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px);
-          border: 1px solid rgba(234, 229, 227, 0.1);
-          color: rgba(234, 229, 227, 0.3);
-          font-weight: 600; letter-spacing: 1px; font-size: 14px;
-          cursor: pointer; transition: all 0.3s; user-select: none;
-        }
-
+        .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
-
-        /* Case Study Styling */
         .case-study-page { width: 100vw; height: 100vh; background: ${DARK_THEME}; color: #eae5e3; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
-        
-        /* Large Headers: Thunder Bold, All Caps */
-        .header-title { 
-          font-family: 'Thunder', sans-serif; 
-          font-size: 120px; 
-          line-height: 0.9;
-          text-transform: uppercase; 
-          margin-bottom: 10px;
-        }
-
-        .home-btn { 
-          position: fixed; top: 40px; border: 1px solid rgba(234, 229, 227, 0.2); 
-          padding: 10px 20px; border-radius: 20px; color: #eae5e3; 
-          text-decoration: none; font-size: 12px; transition: 0.2s; z-index: 100; 
-        }
+        .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 10px; }
+        .home-btn { position: fixed; top: 40px; border: 1px solid rgba(234, 229, 227, 0.2); padding: 10px 20px; border-radius: 20px; color: #eae5e3; text-decoration: none; font-size: 12px; transition: 0.2s; z-index: 100; }
         .home-btn:hover { background: #eae5e3; color: ${DARK_THEME}; }
-
-        @media (min-width: 769px) {
-          .ui-overlay { bottom: 80px; max-width: 600px; }
-          .nav-button { width: 70px; height: 70px; font-size: 24px; }
-          .select-button { height: 50px; font-size: 16px; }
-          .header-title { font-size: 200px; }
-        }
+        @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
       `}</style>
       <Routes>
         <Route path="/" element={<Home />} />
