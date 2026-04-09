@@ -26,31 +26,54 @@ const CARTRIDGE_DATA = [
 function Loader({ finished, onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
+  const [initialPauseDone, setInitialPauseDone] = useState(false)
 
+  // 1. Logic for the initial half-second play then pause
+  useEffect(() => {
+    if (videoRef.current) {
+      videoRef.current.play().catch(e => console.log("Autoplay blocked", e))
+      
+      const pauseTimer = setTimeout(() => {
+        if (videoRef.current && progress < 100) {
+          videoRef.current.pause()
+          setInitialPauseDone(true)
+        }
+      }, 500) // Pause exactly at 0.5s
+
+      return () => clearTimeout(pauseTimer)
+    }
+  }, [])
+
+  // 2. Logic to resume when 100% loaded
   useEffect(() => {
     if (progress === 100) {
-      // 1. Initial buffer pause
-      const triggerTimer = setTimeout(() => {
-        // 2. Play the wink
+      const resumeTimer = setTimeout(() => {
         if (videoRef.current) {
-          videoRef.current.play().catch(e => console.log("Video error", e))
+          videoRef.current.play().catch(e => console.log("Resume error", e))
         }
         
-        // 3. Wait 500ms into the animation before starting the slide
+        // Trigger slide down 500ms after the resume starts
         setTimeout(() => {
           onExit()
         }, 500) 
 
-      }, 400) 
+      }, 300) 
 
-      return () => clearTimeout(triggerTimer)
+      return () => clearTimeout(resumeTimer)
     }
   }, [progress, onExit])
 
   return (
     <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
       <div className="loader-content">
-        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
+        <video 
+            ref={videoRef} 
+            src="/wink.mp4" 
+            muted 
+            playsInline 
+            className="wink-video" 
+            preload="auto" 
+        />
         <div className="loader-bar-container">
           <div className="loader-bar" style={{ width: `${progress}%` }} />
         </div>
@@ -107,7 +130,6 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     lastActive.current = active
     const localTime = t - startTime.current
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
-    const restIntensity = 2.5 
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -119,7 +141,7 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
       if (child.isMesh) {
         child.material.color.lerpColors(NEW_WHITE, FILL_COLOR, f)
         child.material.emissive.lerpColors(NEW_WHITE, FILL_COLOR, f)
-        child.material.emissiveIntensity = THREE.MathUtils.lerp(restIntensity, activePulse, f)
+        child.material.emissiveIntensity = THREE.MathUtils.lerp(2.5, activePulse, f)
       }
     })
   })
@@ -166,7 +188,7 @@ function Home() {
   return (
     <div className="home-wrapper">
       <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />
-      <div className={`main-content ${isLoaderActive ? 'hidden' : 'visible'}`}>
+      <div className="main-content">
         <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
         <div className="ui-overlay"><div className="nav-button" onClick={moveLeft}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={moveRight}> &gt; </div></div>
         <div className="canvas-container">
@@ -221,7 +243,6 @@ export default function App() {
 
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
         
-        /* Spacing Tightened (margin-bottom: 5px) */
         .wink-video { 
           width: 500px; height: 500px; 
           max-width: 85vw; max-height: 85vw; 
@@ -229,8 +250,8 @@ export default function App() {
           object-fit: cover; 
         }
 
-        /* Width Matched to 500px to mirror Video */
         .loader-bar-container { 
+          /* Exactly matching video width */
           width: 500px; 
           max-width: 85vw; 
           height: 2px; 
