@@ -29,13 +29,18 @@ function Loader({ finished, onExit }) {
 
   useEffect(() => {
     if (progress === 100) {
-      // Trigger exactly when loading finishes
+      // 1. Initial buffer pause
       const triggerTimer = setTimeout(() => {
+        // 2. Play the wink
         if (videoRef.current) {
           videoRef.current.play().catch(e => console.log("Video error", e))
         }
-        // Transitions down IMMEDIATELY as the wink starts
-        onExit()
+        
+        // 3. Wait 500ms into the animation before starting the slide
+        setTimeout(() => {
+          onExit()
+        }, 500) 
+
       }, 400) 
 
       return () => clearTimeout(triggerTimer)
@@ -210,14 +215,30 @@ export default function App() {
           position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
           background: ${DARK_THEME}; z-index: 1000;
           display: flex; align-items: center; justify-content: center;
-          /* UPDATED RAMP: Starts with zero velocity, accelerates to max speed */
-          transition: transform 1s cubic-bezier(0.85, 0, 1, 1);
+          transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1);
         }
         .loader-screen.slide-down { transform: translateY(100%); }
 
-        .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
-        .wink-video { width: 500px; height: 500px; max-width: 80vw; max-height: 80vw; margin-bottom: 20px; object-fit: cover; }
-        .loader-bar-container { width: 300px; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
+        .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
+        
+        /* Spacing Tightened (margin-bottom: 5px) */
+        .wink-video { 
+          width: 500px; height: 500px; 
+          max-width: 85vw; max-height: 85vw; 
+          margin-bottom: 5px; 
+          object-fit: cover; 
+        }
+
+        /* Width Matched to 500px to mirror Video */
+        .loader-bar-container { 
+          width: 500px; 
+          max-width: 85vw; 
+          height: 2px; 
+          background: rgba(234, 229, 227, 0.1); 
+          border-radius: 2px; 
+          margin-bottom: 12px; 
+          overflow: hidden; 
+        }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
