@@ -32,7 +32,7 @@ function Loader({ finished, onExit }) {
       videoRef.current.play().catch(() => {})
       const pauseTimer = setTimeout(() => {
         if (videoRef.current && progress < 100) videoRef.current.pause()
-      }, 500) // Pause at 0.5s
+      }, 500)
       return () => clearTimeout(pauseTimer)
     }
   }, [])
@@ -41,7 +41,7 @@ function Loader({ finished, onExit }) {
     if (progress === 100) {
       const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
-        setTimeout(() => onExit(), 500) // Slide down mid-animation
+        setTimeout(() => onExit(), 500) 
       }, 300) 
       return () => clearTimeout(resumeTimer)
     }
@@ -104,10 +104,7 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
     if (active && !lastActive.current) startTime.current = t
     lastActive.current = active
     const localTime = t - startTime.current
-    
-    // Pulsing Glow Logic Restored
     const activePulse = 8.5 + (Math.sin(localTime * 3.75 + Math.PI / 2) * 6.5)
-    
     if (groupRef.current) {
       const idleWave = Math.sin(t * 1 + index * 0.8) * 0.02
       const activeExtra = (Math.sin(t * 1.5 + index) * 0.012) * f
@@ -127,11 +124,7 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   return (
     <animated.group {...props} position-y={posY}>
       <group ref={groupRef}>
-        <mesh 
-          onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} 
-          onPointerOut={() => { if(!isMobile) onHover(null); }} 
-          onClick={(e) => { e.stopPropagation(); onClick(index); }}
-        >
+        <mesh onPointerOver={(e) => { if(!isMobile) { e.stopPropagation(); onHover(index); } }} onPointerOut={() => { if(!isMobile) onHover(null); }} onClick={(e) => { e.stopPropagation(); onClick(index); }}>
           <boxGeometry args={[0.35, 0.5, 0.06]} /> 
           <meshBasicMaterial transparent opacity={0} />
         </mesh>
@@ -149,7 +142,6 @@ function MainScene() {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const [isLoaderActive, setIsLoaderActive] = useState(true)
 
-  // Dynamic Tab Titles
   useEffect(() => {
     if (activeCaseStudy) {
       document.title = `${activeCaseStudy.title} | itsconnorbannister`
@@ -175,9 +167,18 @@ function MainScene() {
     }
   }
 
+  // KEYBOARD LOGIC (Updated with Escape key)
   useEffect(() => {
     const handleKeyDown = (e) => {
+      // 1. If overlay is open, Escape closes it
+      if (e.key === 'Escape' && activeCaseStudy) {
+        setActiveCaseStudy(null)
+        return
+      }
+
+      // 2. Navigation only works when loader is gone and no study is open
       if (isLoaderActive || activeCaseStudy) return
+
       if (e.key === 'ArrowLeft') moveLeft()
       if (e.key === 'ArrowRight') moveRight()
       if (e.key === 'Enter') handleSelect()
@@ -237,9 +238,7 @@ export default function App() {
         @font-face { font-family: 'Thunder'; src: url('/Thunder-BoldLC.ttf') format('truetype'); font-weight: bold; font-style: normal; }
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
-        
         .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); }
         .loader-screen.slide-down { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -247,20 +246,17 @@ export default function App() {
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
         .canvas-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 10; pointer-events: none; }
         .canvas-container canvas { pointer-events: auto; }
-        
         .ui-overlay { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box; }
         .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
         .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
-
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; }
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; background-color: #eae5e3; flex-shrink: 0; }
@@ -271,11 +267,9 @@ export default function App() {
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
         .back-bubble:hover span { color: ${DARK_THEME}; }
-
         @media (min-width: 769px) { .ui-overlay { bottom: 80px; max-width: 600px; } .nav-button { width: 70px; height: 70px; font-size: 24px; } .select-button { height: 50px; font-size: 16px; } .header-title { font-size: 200px; } }
         @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
       `}</style>
-      
       <Routes>
         <Route path="/" element={<MainScene />} />
       </Routes>
