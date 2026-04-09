@@ -23,17 +23,41 @@ const CARTRIDGE_DATA = [
 
 // --- LOADING COMPONENT ---
 
-function Loader({ finished }) {
+function Loader({ finished, onExit }) {
   const { progress } = useProgress()
-  
+  const videoRef = useRef()
+
+  useEffect(() => {
+    if (progress === 100) {
+      const playTimer = setTimeout(() => {
+        if (videoRef.current) {
+          videoRef.current.play().catch(e => console.log("Video error", e))
+        }
+      }, 400) // Slight pause at 100%
+
+      const exitTimer = setTimeout(() => {
+        onExit()
+      }, 2400) // Match this to your wink animation length
+
+      return () => { clearTimeout(playTimer); clearTimeout(exitTimer); }
+    }
+  }, [progress, onExit])
+
   return (
-    <div className={`loader-screen ${finished ? 'fade-out' : ''}`}>
+    <div className={`loader-screen ${finished ? 'slide-down' : ''}`}>
       <div className="loader-content">
-        <h1 className="loader-title">itsconnorbannister</h1>
+        <video 
+          ref={videoRef}
+          src="/wink.mp4" 
+          muted 
+          playsInline 
+          className="wink-video"
+          preload="auto"
+        />
         <div className="loader-bar-container">
           <div className="loader-bar" style={{ width: `${progress}%` }} />
         </div>
-        <p className="loader-text">Loading Collection {Math.round(progress)}%</p>
+        <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
     </div>
   )
@@ -121,19 +145,11 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
 function Home() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
-  const [isLoading, setIsLoading] = useState(true)
-  const { active, progress } = useProgress()
+  const [isLoaderActive, setIsLoaderActive] = useState(true)
+  const { progress } = useProgress()
   const navigate = useNavigate()
 
-  useEffect(() => {
-    document.title = "Selection | itsconnorbannister"
-    // Wait for assets to be 100% AND a minimum timer for a smooth experience
-    if (progress === 100) {
-      const timer = setTimeout(() => setIsLoading(false), 2000) // 2 second extra buffer after loading
-      return () => clearTimeout(timer)
-    }
-  }, [progress])
-
+  useEffect(() => { document.title = "Selection | itsconnorbannister" }, [])
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -142,7 +158,6 @@ function Home() {
 
   const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
   const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
-  
   const handleSelect = (index) => {
     const targetIndex = index !== undefined ? index : hoveredIndex;
     if (targetIndex !== null) {
@@ -153,31 +168,16 @@ function Home() {
 
   return (
     <div className="home-wrapper">
-      <Loader finished={!isLoading} />
-      
-      <div className={`main-content ${isLoading ? 'hidden' : 'visible'}`}>
-        <div className="bg-container">
-          <div className="bg-layer base-bg" />
-          {CARTRIDGE_DATA.map((item, i) => (
-            <VideoLayer key={i} src={item.video} active={hoveredIndex === i} />
-          ))}
-        </div>
-        <div className="ui-overlay">
-          <div className="nav-button" onClick={moveLeft}> &lt; </div>
-          <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
-          <div className="nav-button" onClick={moveRight}> &gt; </div>
-        </div>
+      <Loader finished={!isLoaderActive} onExit={() => setIsLoaderActive(false)} />
+      <div className={`main-content ${isLoaderActive ? 'hidden' : 'visible'}`}>
+        <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
+        <div className="ui-overlay"><div className="nav-button" onClick={moveLeft}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={moveRight}> &gt; </div></div>
         <div className="canvas-container">
-          <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+          <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
             <Suspense fallback={null}>
                <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
                <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
-                  {CARTRIDGE_DATA.map((item, i) => (
-                    <GbaInstance 
-                      key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
-                      onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
-                    />
-                  ))}
+                  {CARTRIDGE_DATA.map((item, i) => (<GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />))}
                </group>
             </Suspense>
             <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
@@ -210,11 +210,7 @@ export default function App() {
   return (
     <Router>
       <style>{`
-        @font-face {
-          font-family: 'Thunder';
-          src: url('/Thunder-BoldLC.ttf') format('truetype');
-          font-weight: bold; font-style: normal;
-        }
+        @font-face { font-family: 'Thunder'; src: url('/Thunder-BoldLC.ttf') format('truetype'); font-weight: bold; font-style: normal; }
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         
@@ -223,19 +219,26 @@ export default function App() {
           position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
           background: ${DARK_THEME}; z-index: 1000;
           display: flex; align-items: center; justify-content: center;
-          transition: transform 1s cubic-bezier(0.85, 0, 0.15, 1), opacity 1s ease;
+          /* Transitioning to slide DOWN */
+          transition: transform 1.2s cubic-bezier(0.85, 0, 0.15, 1);
         }
-        .loader-screen.fade-out { transform: translateY(-100%); pointer-events: none; }
-        .loader-content { text-align: center; width: 80%; max-width: 400px; }
-        .loader-title { font-family: 'Thunder'; font-size: 40px; text-transform: uppercase; margin-bottom: 20px; letter-spacing: 2px; }
-        .loader-bar-container { width: 100%; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 10px; overflow: hidden; }
+        .loader-screen.slide-down { transform: translateY(100%); }
+
+        .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; max-width: 500px; }
+        
+        .wink-video { 
+          width: 500px; height: 500px; 
+          max-width: 80vw; max-height: 80vw; /* Safety for mobile */
+          margin-bottom: 20px; 
+          object-fit: cover;
+        }
+
+        .loader-bar-container { width: 300px; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
-        .loader-text { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; }
+        .loader-text { font-family: degular, sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
 
         .main-content { width: 100%; height: 100%; transition: opacity 1s ease; }
         .main-content.hidden { opacity: 0; }
-        .main-content.visible { opacity: 1; }
-
         .home-wrapper { width: 100vw; height: 100vh; position: relative; }
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
@@ -244,8 +247,8 @@ export default function App() {
         .canvas-container canvas { pointer-events: auto; }
         .ui-overlay { position: absolute; bottom: 100px; left: 50%; transform: translateX(-50%); width: 100%; max-width: 450px; z-index: 100; pointer-events: none; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; box-sizing: border-box; }
         .nav-button, .select-button { pointer-events: auto; display: flex; align-items: center; justify-content: center; }
-        .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
-        .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
+        .nav-button { width: 55px; height: 55px; border-radius: 50%; background: rgba(234, 229, 227, 0.1); border: 1px solid rgba(234, 229, 227, 0.15); color: #eae5e3; font-size: 20px; cursor: pointer; transition: all 0.2s; user-select: none; }
+        .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
         .case-study-page { width: 100vw; height: 100vh; background: ${DARK_THEME}; color: #eae5e3; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
