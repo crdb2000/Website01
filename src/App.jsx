@@ -27,40 +27,22 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-  const [isPaused, setIsPaused] = useState(false)
 
-  // 1. Initial play and potential pause
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
-
-    const pauseCheck = setTimeout(() => {
-      if (progress < 100) {
-        vid.pause()
-        setIsPaused(true)
-      }
-    }, 500)
-
+    const pauseCheck = setTimeout(() => { if (progress < 100) vid.pause() }, 500)
     return () => clearTimeout(pauseCheck)
   }, [])
 
-  // 2. Final sequence trigger
   useEffect(() => {
     if (progress >= 100) {
-      // Small buffer to ensure everything is settled
       const finishTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
-        
-        // Wait 500ms into the "resume" to drop the screen
-        setTimeout(() => {
-          setIsExiting(true)
-          // Unmount the component after transition finishes
-          setTimeout(onExit, 1100)
-        }, 500)
+        setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1100) }, 500)
       }, 200)
-      
       return () => clearTimeout(finishTimer)
     }
   }, [progress, onExit])
@@ -69,9 +51,7 @@ function Loader({ onExit }) {
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
-        <div className="loader-bar-container">
-          <div className="loader-bar" style={{ width: `${progress}%` }} />
-        </div>
+        <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
     </div>
@@ -165,6 +145,15 @@ function MainScene() {
     overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
   }
 
+  // RESET SCROLL FUNCTION
+  const closeCaseStudy = () => {
+    setActiveCaseStudy(null)
+    if (overlayRef.current) {
+        overlayRef.current.scrollTo(0, 0) // Reset scroll to top
+        overlayRef.current.style.setProperty('--scroll-y', '0px') // Reset parallax
+    }
+  }
+
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -172,12 +161,13 @@ function MainScene() {
   }, [])
 
   useEffect(() => {
-    if (activeCaseStudy) document.title = `${activeCaseStudy.title} | itsconnorbannister`
+    if (activeCaseStudy) {
+        document.title = `${activeCaseStudy.title} | itsconnorbannister`
+        if (overlayRef.current) overlayRef.current.scrollTo(0, 0) // Ensure fresh opens start at top
+    }
     else document.title = "Selection | itsconnorbannister"
   }, [activeCaseStudy])
 
-  const moveLeft = () => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
-  const moveRight = () => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
   const handleSelect = (idx) => {
     const targetIdx = idx !== undefined ? idx : hoveredIndex
     if (targetIdx !== null) {
@@ -188,10 +178,10 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && activeCaseStudy) { setActiveCaseStudy(null); return; }
+      if (e.key === 'Escape' && activeCaseStudy) { closeCaseStudy(); return; }
       if (showLoader || activeCaseStudy) return
-      if (e.key === 'ArrowLeft') moveLeft()
-      if (e.key === 'ArrowRight') moveRight()
+      if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
+      if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
       if (e.key === 'Enter') handleSelect()
     }
     window.addEventListener('keydown', handleKeyDown)
@@ -210,13 +200,13 @@ function MainScene() {
       </div>
 
       <div className="ui-overlay">
-        <div className="nav-button" onClick={moveLeft}> &lt; </div>
+        <div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div>
         <div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div>
-        <div className="nav-button" onClick={moveRight}> &gt; </div>
+        <div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div>
       </div>
 
       <div className="canvas-container">
-        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true, powerPreference: "high-performance" }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
+        <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
@@ -229,6 +219,7 @@ function MainScene() {
         </Canvas>
       </div>
 
+      {/* Case Study Overlay */}
       <div ref={overlayRef} onScroll={onOverlayScroll} className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header">
            <div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} />
@@ -238,7 +229,9 @@ function MainScene() {
           <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
           <div style={{ height: '150vh' }} />
         </div>
-        <div className="back-bubble" onClick={() => { setActiveCaseStudy(null); if(overlayRef.current) overlayRef.current.style.setProperty('--scroll-y', '0px'); }}><span>&#x279A;</span></div>
+        
+        {/* FIXED POSITION EXIT BUBBLE */}
+        <div className="back-bubble" onClick={closeCaseStudy}><span>&#x279A;</span></div>
       </div>
     </div>
   )
@@ -252,7 +245,6 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-        
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
@@ -260,7 +252,6 @@ export default function App() {
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -277,18 +268,27 @@ export default function App() {
         .case-study-overlay.open { transform: translateY(0); }
         
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
-        .case-header-img { 
-           position: absolute; 
-           top: 0; left: 0; width: 100%; height: 80vh; 
-           background-size: cover; background-position: center; background-repeat: no-repeat; 
-           transform: translateY(calc(var(--scroll-y, 0px) * -0.6)); 
-           will-change: transform; 
-        }
-
+        .case-header-img { position: absolute; top: 0; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.6)); will-change: transform; }
         .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
         .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
-        .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 600; transition: all 0.3s; }
+        
+        /* STICKY BACK BUBBLE */
+        .back-bubble { 
+            position: fixed; /* STAYS IN VIEW REGARDLESS OF SCROLL */
+            bottom: 40px; 
+            left: 40px; 
+            width: 60px; 
+            height: 60px; 
+            background: rgba(234, 229, 227, 0.1); 
+            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
+            border: 1px solid rgba(234, 229, 227, 0.2); 
+            border-radius: 50%; 
+            display: flex; align-items: center; justify-content: center; 
+            cursor: pointer; 
+            z-index: 999; /* ABOVE EVERYTHING ELSE */
+            transition: all 0.3s; 
+        }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
         .back-bubble:hover span { color: ${DARK_THEME}; }
@@ -298,12 +298,7 @@ export default function App() {
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
            .header-title { font-size: 200px; } 
-           /* Desktop specific: Start image 50px higher */
-           .case-header-img { 
-              top: -50px; 
-              height: calc(80vh + 50px); 
-              transform: translateY(calc((var(--scroll-y, 0px) * -0.6))); 
-           }
+           .case-header-img { top: -50px; height: calc(80vh + 50px); transform: translateY(calc((var(--scroll-y, 0px) * -0.6))); }
         }
         @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
       `}</style>
