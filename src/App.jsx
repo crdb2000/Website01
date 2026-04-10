@@ -26,55 +26,56 @@ const PLACE_TEXT = "This is a few lines about the project, roughly outlining the
 // --- COMPONENTS ---
 
 function Loader({ onExit }) {
-  const { progress } = useProgress()
+  const { progress } = useProgress() // Tracks 3D Models
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
+  const [fontsReady, setFontsReady] = useState(false)
   const hasTriggeredExit = useRef(false)
   const pauseTimer = useRef(null)
 
-  // 1. Initial Logic
+  // 1. Check for Fonts
+  useEffect(() => {
+    document.fonts.ready.then(() => setFontsReady(true))
+  }, [])
+
+  // 2. Initial Video Logic
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
-    
     vid.currentTime = 0
     vid.play().catch(() => {})
 
-    // Only set a pause timer if we aren't already at 100%
-    if (progress < 100) {
+    // Only pause if we aren't already finished
+    if (progress < 100 || !fontsReady) {
       pauseTimer.current = setTimeout(() => {
-        vid.pause()
+        if (videoRef.current) videoRef.current.pause()
       }, 500)
     }
-
     return () => clearTimeout(pauseTimer.current)
   }, [])
 
-  // 2. Completion Logic
+  // 3. Final Sequence (Only when 3D AND Fonts are 100% ready)
   useEffect(() => {
-    if (progress >= 100 && !hasTriggeredExit.current) {
+    if (progress >= 100 && fontsReady && !hasTriggeredExit.current) {
       hasTriggeredExit.current = true
-      
-      // Clear any pending pause commands
       clearTimeout(pauseTimer.current)
       
-      // Resume video playback
       if (videoRef.current) videoRef.current.play().catch(() => {})
 
-      // Wait 0.5s into the wink to slide the overlay
       setTimeout(() => {
         setIsExiting(true)
-        // Wait for CSS slide transition (1s) to finish before unmounting
         setTimeout(onExit, 1100)
       }, 500)
     }
-  }, [progress, onExit])
+  }, [progress, fontsReady, onExit])
 
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
-        <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
+        <div className="loader-bar-container">
+          <div className="loader-bar" style={{ width: `${progress}%` }} />
+        </div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
     </div>
@@ -84,14 +85,20 @@ function Loader({ onExit }) {
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
   const [hasLoaded, setHasLoaded] = useState(false)
-  useEffect(() => { if (active && !hasLoaded) setHasLoaded(true) }, [active, hasLoaded])
+  // We now start loading all videos immediately but muted/paused to ensure they are ready for the fade
+  useEffect(() => { setHasLoaded(true) }, [])
+  
   useEffect(() => {
-    if (hasLoaded && videoRef.current) {
+    if (videoRef.current) {
       if (active) videoRef.current.play().catch(() => {})
       else videoRef.current.pause()
     }
-  }, [active, hasLoaded])
-  return <video ref={videoRef} src={hasLoaded ? src : undefined} className="bg-layer" muted loop playsInline style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
+  }, [active])
+
+  return (
+    <video ref={videoRef} src={src} className="bg-layer" muted loop playsInline
+      style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
+  )
 }
 
 function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props }) {
@@ -195,7 +202,7 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activeCaseStudy && e.key === 'Escape') { closeCaseStudy(); return; }
+      if (e.key === 'Escape' && activeCaseStudy) { closeCaseStudy(); return; }
       if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
       if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
@@ -209,6 +216,12 @@ function MainScene() {
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
       <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}><span>&#x279A;</span></div>
+      
+      {/* Hidden Pre-fetcher for images */}
+      <div style={{ display: 'none' }}>
+        {CARTRIDGE_DATA.map(item => <img key={item.id} src={item.headerImg} alt="" />)}
+      </div>
+
       <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
       <div className="ui-overlay"><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div></div>
       <div className="canvas-container">
@@ -268,11 +281,13 @@ export default function App() {
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
+        
         .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
         .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; gap: 30px; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
+        
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
