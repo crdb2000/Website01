@@ -27,16 +27,14 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
-    const pauseCheck = setTimeout(() => { if (progress < 100) vid.pause() }, 500)
+    const pauseCheck = setTimeout(() => { if (progress < 100 && vid) vid.pause() }, 500)
     return () => clearTimeout(pauseCheck)
   }, [])
-
   useEffect(() => {
     if (progress >= 100) {
       const finishTimer = setTimeout(() => {
@@ -46,7 +44,6 @@ function Loader({ onExit }) {
       return () => clearTimeout(finishTimer)
     }
   }, [progress, onExit])
-
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
@@ -145,12 +142,11 @@ function MainScene() {
     overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
   }
 
-  // RESET SCROLL FUNCTION
   const closeCaseStudy = () => {
     setActiveCaseStudy(null)
     if (overlayRef.current) {
-        overlayRef.current.scrollTo(0, 0) // Reset scroll to top
-        overlayRef.current.style.setProperty('--scroll-y', '0px') // Reset parallax
+        overlayRef.current.scrollTo(0, 0)
+        overlayRef.current.style.setProperty('--scroll-y', '0px')
     }
   }
 
@@ -163,7 +159,7 @@ function MainScene() {
   useEffect(() => {
     if (activeCaseStudy) {
         document.title = `${activeCaseStudy.title} | itsconnorbannister`
-        if (overlayRef.current) overlayRef.current.scrollTo(0, 0) // Ensure fresh opens start at top
+        if (overlayRef.current) overlayRef.current.scrollTo(0, 0)
     }
     else document.title = "Selection | itsconnorbannister"
   }, [activeCaseStudy])
@@ -192,6 +188,11 @@ function MainScene() {
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
       
+      {/* 1. STICKY BACK BUBBLE (Moved outside overlay for true sticky behavior) */}
+      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}>
+        <span>&#x279A;</span>
+      </div>
+
       <div className="bg-container">
         <div className="bg-layer base-bg" />
         {CARTRIDGE_DATA.map((item, i) => (
@@ -219,7 +220,6 @@ function MainScene() {
         </Canvas>
       </div>
 
-      {/* Case Study Overlay */}
       <div ref={overlayRef} onScroll={onOverlayScroll} className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header">
            <div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} />
@@ -229,9 +229,6 @@ function MainScene() {
           <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
           <div style={{ height: '150vh' }} />
         </div>
-        
-        {/* FIXED POSITION EXIT BUBBLE */}
-        <div className="back-bubble" onClick={closeCaseStudy}><span>&#x279A;</span></div>
       </div>
     </div>
   )
@@ -266,16 +263,15 @@ export default function App() {
 
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
-        
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: 0; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.6)); will-change: transform; }
         .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
         .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
         
-        /* STICKY BACK BUBBLE */
+        /* IMPROVED STICKY BUBBLE */
         .back-bubble { 
-            position: fixed; /* STAYS IN VIEW REGARDLESS OF SCROLL */
+            position: fixed; 
             bottom: 40px; 
             left: 40px; 
             width: 60px; 
@@ -286,8 +282,18 @@ export default function App() {
             border-radius: 50%; 
             display: flex; align-items: center; justify-content: center; 
             cursor: pointer; 
-            z-index: 999; /* ABOVE EVERYTHING ELSE */
-            transition: all 0.3s; 
+            z-index: 2000; /* Highest possible */
+            transition: all 0.4s ease-out; 
+            opacity: 0; 
+            visibility: hidden;
+            pointer-events: none;
+            transform: scale(0.5);
+        }
+        .back-bubble.visible { 
+            opacity: 1; 
+            visibility: visible; 
+            pointer-events: auto; 
+            transform: scale(1);
         }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
