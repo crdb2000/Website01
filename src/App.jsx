@@ -12,40 +12,89 @@ const FILL_COLOR = new THREE.Color('#eae6e4')
 const DARK_THEME = '#212020' 
 
 const CARTRIDGE_DATA = [
-  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel', headerImg: null },
-  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', headerImg: '/LBL_TopBanner_01.png' },
-  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', headerImg: null },
-  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', headerImg: null },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', headerImg: null },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', headerImg: null },
-  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', headerImg: null }
+  { 
+    model: '/Cartridge_Web_04.glb', 
+    video: '/WebBG_Reel_01_NewLarge.mp4', 
+    id: 'showreel', 
+    title: 'Showreel', 
+    headerImg: '/Web_Header_Reel_01.png' 
+  },
+  { 
+    model: '/Web_Cart_02_V1.glb',   
+    video: '/WebBG_LBL_01_NewLarge.mp4', 
+    id: 'less-but-loud', 
+    title: 'Less But Loud', 
+    headerImg: '/Web_Header_LBL_01.png' 
+  },
+  { 
+    model: '/Web_Cart_03_V1.glb',   
+    video: '/WebBG_F1_01_NewLarge.mp4', 
+    id: 'f125', 
+    title: 'EA Sports F125', 
+    headerImg: '/Web_Header_F1_01.png' 
+  },
+  { 
+    model: '/Web_Cart_04_V1.glb',   
+    video: '/WebBG_SW_01_NewLarge.mp4', 
+    id: 'sendwave', 
+    title: 'Sendwave', 
+    headerImg: '/Web_Header_Sendwave_01.png' 
+  },
+  { 
+    model: '/Web_Cart_05_V1.glb',   
+    video: '/WebBG_Holds_01_NewLarge.mp4', 
+    id: 'hold-friends', 
+    title: 'Hold Friends', 
+    headerImg: '/Web_Header_Holds_01.png' 
+  },
+  { 
+    model: '/Web_Cart_07_V1.glb',   
+    video: '/WebBG_DND_01_NewLarge.mp4', 
+    id: 'dice-n-dice', 
+    title: 'Dice N Dice', 
+    headerImg: '/Web_Header_DND_01.png' 
+  },
+  { 
+    model: '/Web_Cart_08_V1.glb',   
+    video: '/WebBG_Further_01_NewLarge.mp4', 
+    id: 'further', 
+    title: 'Further', 
+    headerImg: '/Web_Header_Further_01.png' 
+  }
 ]
 
 // --- COMPONENTS ---
 
-// LOADER: Frozen as is per request
 function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
+  const hasTriggeredEnd = useRef(false)
+
   useEffect(() => {
     const vid = videoRef.current
-    if (vid) {
-      vid.currentTime = 0
-      vid.play().catch(() => {})
-      const pauseTimer = setTimeout(() => { if (progress < 100) vid.pause() }, 500)
-      return () => clearTimeout(pauseTimer)
-    }
+    if (!vid) return
+    vid.currentTime = 0
+    vid.play().catch(() => {})
+
+    const checkTimer = setTimeout(() => {
+      if (progress < 100 && vid) vid.pause()
+    }, 500)
+    return () => clearTimeout(checkTimer)
   }, [])
+
   useEffect(() => {
-    if (progress === 100) {
-      const resumeTimer = setTimeout(() => {
-        if (videoRef.current) videoRef.current.play().catch(() => {})
-        setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1100) }, 500) 
-      }, 300) 
-      return () => clearTimeout(resumeTimer)
+    if (progress === 100 && !hasTriggeredEnd.current) {
+      hasTriggeredEnd.current = true
+      if (videoRef.current) videoRef.current.play().catch(() => {})
+      const slideTimer = setTimeout(() => {
+        setIsExiting(true)
+        setTimeout(onExit, 1100)
+      }, 500)
+      return () => clearTimeout(slideTimer)
     }
   }, [progress, onExit])
+
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
@@ -141,9 +190,7 @@ function MainScene() {
   const overlayRef = useRef()
 
   const onOverlayScroll = (e) => {
-    const scrolled = e.target.scrollTop;
-    // Update CSS variable for GPU acceleration
-    overlayRef.current.style.setProperty('--scroll-y', `${scrolled}px`);
+    overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
   }
 
   useLayoutEffect(() => {
@@ -210,18 +257,9 @@ function MainScene() {
         </Canvas>
       </div>
 
-      <div 
-        ref={overlayRef}
-        onScroll={onOverlayScroll}
-        className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}
-      >
+      <div ref={overlayRef} onScroll={onOverlayScroll} className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header">
-           <div 
-             className="case-header-img" 
-             style={{ 
-               backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none',
-             }} 
-           />
+           <div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} />
         </div>
         <div className="case-content">
           <h1 className="header-title">{activeCaseStudy?.title}</h1>
@@ -260,35 +298,10 @@ export default function App() {
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
-
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
-        
-        /* THE PARALLAX BOX */
-        .case-header { 
-          width: 100%; 
-          height: 50vh; 
-          overflow: hidden; 
-          position: relative; 
-          flex-shrink: 0; 
-          background-color: #eae5e3; 
-        }
-
-        .case-header-img { 
-          position: absolute; 
-          top: 0; 
-          left: 0; 
-          width: 100%; 
-          /* Image is 80vh high inside a 50vh box (30vh travel) */
-          height: 80vh; 
-          background-size: cover; 
-          background-position: center; 
-          background-repeat: no-repeat;
-          /* Calculation: Move up -30vh over the course of 50vh scroll (30/50 = 0.6) */
-          transform: translateY(calc(var(--scroll-y, 0px) * -0.6));
-          will-change: transform;
-        }
-
+        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
+        .case-header-img { position: absolute; top: 0; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.6)); will-change: transform; }
         .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
         .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
