@@ -29,45 +29,51 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-  const hasTriggeredResume = useRef(false)
+  const hasTriggeredExit = useRef(false)
+  const pauseTimer = useRef(null)
 
-  // 1. Initial play sequence: Start at 0s, Pause at 0.5s
+  // 1. Initial Logic
   useEffect(() => {
     const vid = videoRef.current
-    if (vid) {
-      vid.currentTime = 0
-      vid.play().catch(() => {})
-      const pauseTimer = setTimeout(() => {
-        // Only pause if assets aren't finished yet
-        if (progress < 100) vid.pause()
+    if (!vid) return
+    
+    vid.currentTime = 0
+    vid.play().catch(() => {})
+
+    // Only set a pause timer if we aren't already at 100%
+    if (progress < 100) {
+      pauseTimer.current = setTimeout(() => {
+        vid.pause()
       }, 500)
-      return () => clearTimeout(pauseTimer)
     }
+
+    return () => clearTimeout(pauseTimer.current)
   }, [])
 
-  // 2. Resume sequence: When progress hits 100%
+  // 2. Completion Logic
   useEffect(() => {
-    if (progress === 100 && !hasTriggeredResume.current) {
-      hasTriggeredResume.current = true
+    if (progress >= 100 && !hasTriggeredExit.current) {
+      hasTriggeredExit.current = true
       
-      // Resume video
+      // Clear any pending pause commands
+      clearTimeout(pauseTimer.current)
+      
+      // Resume video playback
       if (videoRef.current) videoRef.current.play().catch(() => {})
 
-      // Wait 0.5s after 100% is reached to trigger the slide
-      const slideDelay = setTimeout(() => {
+      // Wait 0.5s into the wink to slide the overlay
+      setTimeout(() => {
         setIsExiting(true)
-        // Match transition duration (1s) before unmounting
+        // Wait for CSS slide transition (1s) to finish before unmounting
         setTimeout(onExit, 1100)
       }, 500)
-
-      return () => clearTimeout(slideDelay)
     }
   }, [progress, onExit])
 
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
-        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" style={{ background: DARK_THEME }} />
+        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
         <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
@@ -242,11 +248,10 @@ export default function App() {
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
+        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; background: ${DARK_THEME}; }
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -263,14 +268,11 @@ export default function App() {
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
-        
-        /* CASE CONTENT MARGINS */
         .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
         .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; gap: 30px; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
-        
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
@@ -284,17 +286,11 @@ export default function App() {
            .case-content { padding: 40px; } 
            .back-bubble { left: 40px; bottom: 40px; }
         }
-
-        /* MOBILE TYPOGRAPHY FIX */
         @media (max-width: 768px) { 
           .case-content { padding: 30px; }
           .title-row { flex-direction: column; align-items: flex-start; gap: 0; margin-bottom: 20px; }
           .header-title { font-size: 80px; white-space: normal; padding-top: 0; line-height: 0.9; }
-          .date-display { 
-             font-size: 40px; /* Exactly half of title 80px */
-             margin-top: 0px; 
-             align-self: flex-start; 
-          }
+          .date-display { font-size: 40px; margin-top: 0px; align-self: flex-start; }
           .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
         }
       `}</style>
