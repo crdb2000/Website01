@@ -37,11 +37,11 @@ function Loader({ onExit }) {
   }, [])
   useEffect(() => {
     if (progress >= 100) {
-      const finishTimer = setTimeout(() => {
+      const resumeTimer = setTimeout(() => {
         if (videoRef.current) videoRef.current.play().catch(() => {})
         setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1100) }, 500)
       }, 200)
-      return () => clearTimeout(finishTimer)
+      return () => clearTimeout(resumeTimer)
     }
   }, [progress, onExit])
   return (
@@ -164,14 +164,6 @@ function MainScene() {
     else document.title = "Selection | itsconnorbannister"
   }, [activeCaseStudy])
 
-  const handleSelect = (idx) => {
-    const targetIdx = idx !== undefined ? idx : hoveredIndex
-    if (targetIdx !== null) {
-      if (isMobile && hoveredIndex !== targetIdx) setHoveredIndex(targetIdx)
-      else setActiveCaseStudy(CARTRIDGE_DATA[targetIdx])
-    }
-  }
-
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape' && activeCaseStudy) { closeCaseStudy(); return; }
@@ -184,11 +176,18 @@ function MainScene() {
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [hoveredIndex, activeCaseStudy, showLoader])
 
+  const handleSelect = (idx) => {
+    const targetIdx = idx !== undefined ? idx : hoveredIndex
+    if (targetIdx !== null) {
+      if (isMobile && hoveredIndex !== targetIdx) setHoveredIndex(targetIdx)
+      else setActiveCaseStudy(CARTRIDGE_DATA[targetIdx])
+    }
+  }
+
   return (
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
       
-      {/* 1. STICKY BACK BUBBLE (Moved outside overlay for true sticky behavior) */}
       <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}>
         <span>&#x279A;</span>
       </div>
@@ -212,7 +211,10 @@ function MainScene() {
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (
-                  <GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />
+                  <GbaInstance 
+                    key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
+                    onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
+                  />
                 ))}
              </group>
           </Suspense>
@@ -249,6 +251,7 @@ export default function App() {
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -263,38 +266,37 @@ export default function App() {
 
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
-        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
-        .case-header-img { position: absolute; top: 0; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.6)); will-change: transform; }
+        
+        /* PARALLAX BOX SETTINGS */
+        .case-header { 
+          width: 100%; 
+          height: 50vh; 
+          overflow: hidden; 
+          position: relative; 
+          flex-shrink: 0; 
+          background-color: #eae5e3; 
+        }
+
+        .case-header-img { 
+          position: absolute; 
+          top: -15vh; /* Initial offset to start centered ( (80-50)/2 = 15 ) */
+          left: 0; 
+          width: 100%; 
+          height: 80vh; /* Taller image */
+          background-size: cover; 
+          background-position: center; 
+          background-repeat: no-repeat; 
+          /* Math: Move -15vh more over the course of the 50vh header scroll */
+          transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); 
+          will-change: transform; 
+        }
+
         .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
         .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
         
-        /* IMPROVED STICKY BUBBLE */
-        .back-bubble { 
-            position: fixed; 
-            bottom: 40px; 
-            left: 40px; 
-            width: 60px; 
-            height: 60px; 
-            background: rgba(234, 229, 227, 0.1); 
-            backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); 
-            border: 1px solid rgba(234, 229, 227, 0.2); 
-            border-radius: 50%; 
-            display: flex; align-items: center; justify-content: center; 
-            cursor: pointer; 
-            z-index: 2000; /* Highest possible */
-            transition: all 0.4s ease-out; 
-            opacity: 0; 
-            visibility: hidden;
-            pointer-events: none;
-            transform: scale(0.5);
-        }
-        .back-bubble.visible { 
-            opacity: 1; 
-            visibility: visible; 
-            pointer-events: auto; 
-            transform: scale(1);
-        }
+        .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
+        .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
         .back-bubble:hover span { color: ${DARK_THEME}; }
@@ -304,7 +306,6 @@ export default function App() {
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
            .header-title { font-size: 200px; } 
-           .case-header-img { top: -50px; height: calc(80vh + 50px); transform: translateY(calc((var(--scroll-y, 0px) * -0.6))); }
         }
         @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
       `}</style>
