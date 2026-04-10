@@ -26,56 +26,57 @@ const PLACE_TEXT = "This is a few lines about the project, roughly outlining the
 // --- COMPONENTS ---
 
 function Loader({ onExit }) {
-  const { progress } = useProgress() // Tracks 3D Models
+  const { progress } = useProgress()
   const videoRef = useRef()
-  const [isExiting, setIsExiting] = useState(false)
-  const [fontsReady, setFontsReady] = useState(false)
-  const hasTriggeredExit = useRef(false)
-  const pauseTimer = useRef(null)
+  const [loaderStep, setLoaderStep] = useState('initial') // initial -> paused -> resuming -> exiting
 
-  // 1. Check for Fonts
-  useEffect(() => {
-    document.fonts.ready.then(() => setFontsReady(true))
-  }, [])
-
-  // 2. Initial Video Logic
+  // 1. Force initial playback and pause at 0.5s
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
 
-    // Only pause if we aren't already finished
-    if (progress < 100 || !fontsReady) {
-      pauseTimer.current = setTimeout(() => {
-        if (videoRef.current) videoRef.current.pause()
-      }, 500)
-    }
-    return () => clearTimeout(pauseTimer.current)
+    const pauseTimer = setTimeout(() => {
+      // If we haven't already finished loading, pause.
+      // If we are already at 100%, skip the pause and just keep going.
+      if (progress < 100) {
+        vid.pause()
+        setLoaderStep('paused')
+      } else {
+        setLoaderStep('resuming')
+      }
+    }, 500)
+
+    return () => clearTimeout(pauseTimer)
   }, [])
 
-  // 3. Final Sequence (Only when 3D AND Fonts are 100% ready)
+  // 2. Watch for 100% loading AND that we have reached the pause point
   useEffect(() => {
-    if (progress >= 100 && fontsReady && !hasTriggeredExit.current) {
-      hasTriggeredExit.current = true
-      clearTimeout(pauseTimer.current)
-      
-      if (videoRef.current) videoRef.current.play().catch(() => {})
-
-      setTimeout(() => {
-        setIsExiting(true)
-        setTimeout(onExit, 1100)
-      }, 500)
+    if (progress === 100 && loaderStep === 'paused') {
+      setLoaderStep('resuming')
     }
-  }, [progress, fontsReady, onExit])
+  }, [progress, loaderStep])
+
+  // 3. Handle the Exit sequence
+  useEffect(() => {
+    if (loaderStep === 'resuming') {
+      if (videoRef.current) videoRef.current.play().catch(() => {})
+      
+      const slideDelay = setTimeout(() => {
+        setLoaderStep('exiting')
+        setTimeout(onExit, 1200) // Unmount after animation
+      }, 500)
+
+      return () => clearTimeout(slideDelay)
+    }
+  }, [loaderStep, onExit])
 
   return (
-    <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
+    <div className={`loader-screen ${loaderStep === 'exiting' ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
-        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
-        <div className="loader-bar-container">
-          <div className="loader-bar" style={{ width: `${progress}%` }} />
-        </div>
+        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" style={{ background: DARK_THEME }} />
+        <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
     </div>
@@ -84,21 +85,13 @@ function Loader({ onExit }) {
 
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
-  const [hasLoaded, setHasLoaded] = useState(false)
-  // We now start loading all videos immediately but muted/paused to ensure they are ready for the fade
-  useEffect(() => { setHasLoaded(true) }, [])
-  
   useEffect(() => {
     if (videoRef.current) {
       if (active) videoRef.current.play().catch(() => {})
       else videoRef.current.pause()
     }
   }, [active])
-
-  return (
-    <video ref={videoRef} src={src} className="bg-layer" muted loop playsInline
-      style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
-  )
+  return <video ref={videoRef} src={src} className="bg-layer" muted loop playsInline style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
 }
 
 function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props }) {
@@ -173,14 +166,6 @@ function MainScene() {
     overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
   }
 
-  const closeCaseStudy = () => {
-    setActiveCaseStudy(null)
-    if (overlayRef.current) {
-        overlayRef.current.scrollTo(0, 0)
-        overlayRef.current.style.setProperty('--scroll-y', '0px')
-    }
-  }
-
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -202,7 +187,7 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && activeCaseStudy) { closeCaseStudy(); return; }
+      if (activeCaseStudy && e.key === 'Escape') { setActiveCaseStudy(null); return; }
       if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
       if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
@@ -215,9 +200,9 @@ function MainScene() {
   return (
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
-      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}><span>&#x279A;</span></div>
+      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
       
-      {/* Hidden Pre-fetcher for images */}
+      {/* Pre-fetching Images */}
       <div style={{ display: 'none' }}>
         {CARTRIDGE_DATA.map(item => <img key={item.id} src={item.headerImg} alt="" />)}
       </div>
@@ -276,18 +261,15 @@ export default function App() {
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
-
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
-        
         .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
         .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; gap: 30px; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
-        
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
