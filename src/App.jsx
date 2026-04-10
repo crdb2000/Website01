@@ -29,44 +29,45 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-  const [hasResumed, setHasResumed] = useState(false)
+  const hasTriggeredResume = useRef(false)
 
-  // 1. Start and pause at 0.5s
+  // 1. Initial play sequence: Start at 0s, Pause at 0.5s
   useEffect(() => {
     const vid = videoRef.current
     if (vid) {
       vid.currentTime = 0
       vid.play().catch(() => {})
-      const t = setTimeout(() => {
-        // Only pause if we aren't done yet
+      const pauseTimer = setTimeout(() => {
+        // Only pause if assets aren't finished yet
         if (progress < 100) vid.pause()
       }, 500)
-      return () => clearTimeout(t)
+      return () => clearTimeout(pauseTimer)
     }
   }, [])
 
-  // 2. Strict check for 100% loading
+  // 2. Resume sequence: When progress hits 100%
   useEffect(() => {
-    if (progress === 100 && !hasResumed) {
-      setHasResumed(true)
-      const vid = videoRef.current
-      if (vid) vid.play().catch(() => {})
+    if (progress === 100 && !hasTriggeredResume.current) {
+      hasTriggeredResume.current = true
       
-      // Timing the slide to match the animation
-      const slideT = setTimeout(() => {
+      // Resume video
+      if (videoRef.current) videoRef.current.play().catch(() => {})
+
+      // Wait 0.5s after 100% is reached to trigger the slide
+      const slideDelay = setTimeout(() => {
         setIsExiting(true)
-        // Cleanup unmount
-        setTimeout(onExit, 1200)
+        // Match transition duration (1s) before unmounting
+        setTimeout(onExit, 1100)
       }, 500)
-      
-      return () => clearTimeout(slideT)
+
+      return () => clearTimeout(slideDelay)
     }
-  }, [progress, onExit, hasResumed])
+  }, [progress, onExit])
 
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
-        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
+        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" style={{ background: DARK_THEME }} />
         <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
@@ -159,6 +160,14 @@ function MainScene() {
     overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
   }
 
+  const closeCaseStudy = () => {
+    setActiveCaseStudy(null)
+    if (overlayRef.current) {
+        overlayRef.current.scrollTo(0, 0)
+        overlayRef.current.style.setProperty('--scroll-y', '0px')
+    }
+  }
+
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -180,7 +189,7 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activeCaseStudy && e.key === 'Escape') { setActiveCaseStudy(null); return; }
+      if (activeCaseStudy && e.key === 'Escape') { closeCaseStudy(); return; }
       if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
       if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
@@ -193,7 +202,7 @@ function MainScene() {
   return (
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
-      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
+      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}><span>&#x279A;</span></div>
       <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
       <div className="ui-overlay"><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div></div>
       <div className="canvas-container">
@@ -233,7 +242,7 @@ export default function App() {
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; background: ${DARK_THEME}; }
+        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
@@ -255,14 +264,14 @@ export default function App() {
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        /* CASE CONTENT */
+        /* CASE CONTENT MARGINS */
         .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
         .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; gap: 30px; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
         
-        .back-bubble { position: fixed; bottom: 30px; left: 30px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
+        .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
@@ -282,9 +291,9 @@ export default function App() {
           .title-row { flex-direction: column; align-items: flex-start; gap: 0; margin-bottom: 20px; }
           .header-title { font-size: 80px; white-space: normal; padding-top: 0; line-height: 0.9; }
           .date-display { 
-             font-size: 40px; /* Half of 80px */
-             margin-top: 5px; 
-             align-self: flex-start; /* Ensure left alignment */
+             font-size: 40px; /* Exactly half of title 80px */
+             margin-top: 0px; 
+             align-self: flex-start; 
           }
           .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
         }
