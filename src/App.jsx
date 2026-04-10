@@ -310,4 +310,4 @@ export default function App() {
       <Routes><Route path="/" element={<MainScene />} /></Routes>
     </Router>
   )
-}
+} 
