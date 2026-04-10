@@ -31,46 +31,25 @@ function Loader({ onExit }) {
   const [isExiting, setIsExiting] = useState(false)
   const [isReadyToFinish, setIsReadyToFinish] = useState(false)
 
-  // 1. Unified sequence logic
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
-
-    // Start video
     vid.currentTime = 0
     vid.play().catch(() => {})
-
-    // Check progress every 100ms
     const checkInterval = setInterval(() => {
       if (progress >= 100) {
         clearInterval(checkInterval)
         setIsReadyToFinish(true)
       }
     }, 100)
-
-    // Initial pause check (only pause if we aren't already at 100%)
-    const pauseTimer = setTimeout(() => {
-      if (progress < 100) vid.pause()
-    }, 500)
-
-    return () => {
-      clearInterval(checkInterval)
-      clearTimeout(pauseTimer)
-    }
+    const pauseTimer = setTimeout(() => { if (progress < 100 && vid) vid.pause() }, 500)
+    return () => { clearInterval(checkInterval); clearTimeout(pauseTimer); }
   }, [progress])
 
-  // 2. The Exit Sequence
   useEffect(() => {
     if (isReadyToFinish) {
       if (videoRef.current) videoRef.current.play().catch(() => {})
-      
-      const slideTimer = setTimeout(() => {
-        setIsExiting(true)
-        // Give time for transition before unmounting
-        setTimeout(onExit, 1200)
-      }, 500)
-      
-      return () => clearTimeout(slideTimer)
+      setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1200) }, 500)
     }
   }, [isReadyToFinish, onExit])
 
@@ -78,9 +57,7 @@ function Loader({ onExit }) {
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
-        <div className="loader-bar-container">
-          <div className="loader-bar" style={{ width: `${progress}%` }} />
-        </div>
+        <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
     </div>
@@ -227,7 +204,8 @@ function MainScene() {
         <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             <group position={isMobile ? [0.715, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
+             {/* UPDATED COORDINATES PER REQUEST */}
+             <group position={isMobile ? [0.71, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (<GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />))}
              </group>
           </Suspense>
@@ -240,7 +218,7 @@ function MainScene() {
         <div className="case-content">
           <div className="title-row">
             <h1 className="header-title">{activeCaseStudy?.title}</h1>
-            <h1 className="header-title">{activeCaseStudy?.year}</h1>
+            <h1 className="header-title date-display">{activeCaseStudy?.year}</h1>
           </div>
           <p className="case-description">{PLACEHOLDER_TEXT}</p>
           <div style={{ height: '150vh' }} />
@@ -258,7 +236,7 @@ export default function App() {
         * { margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         html, body, #root { width: 100%; height: 100%; overflow: hidden; background-color: ${DARK_THEME}; font-family: degular, sans-serif; font-weight: 600; color: #eae5e3; text-transform: none; }
         .home-wrapper { width: 100vw; height: 100vh; position: relative; overflow: hidden; }
-        .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.2s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
+        .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
         .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
@@ -282,20 +260,31 @@ export default function App() {
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        /* WEB CONTENT MARGINS ALIGNED TO EXIT BUBBLE */
-        .case-content { 
+        .case-content { width: 100%; max-width: none; padding: 40px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
+
+        /* NO WRAP & DYNAMIC COLLISION GAP */
+        .title-row { 
+          display: flex; 
+          justify-content: space-between; 
+          align-items: baseline; 
           width: 100%; 
-          max-width: none; 
-          padding: 40px; /* Matching the 40px left/bottom of the back bubble */
-          text-align: left; 
-          background: ${DARK_THEME}; 
-          position: relative; 
-          z-index: 10; 
-          box-sizing: border-box;
+          margin-bottom: 20px; 
+          gap: 50px; 
+          white-space: nowrap; 
         }
 
-        .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; }
-        .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(60px, 12vw, 220px); line-height: 0.85; text-transform: uppercase; margin: 0; }
+        .header-title { 
+          font-family: 'Thunder', sans-serif; 
+          font-size: clamp(40px, 12vw, 220px); 
+          line-height: 0.85; 
+          text-transform: uppercase; 
+          margin: 0; 
+          flex-shrink: 1; /* Allow title to shrink on collision */
+          overflow: hidden;
+        }
+        
+        .date-display { flex-shrink: 0; } /* Year never shrinks */
+
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
         
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
@@ -308,10 +297,15 @@ export default function App() {
            .ui-overlay { bottom: 80px; max-width: 600px; } 
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
-           .case-content { padding: 40px 60px; } /* Slightly more breathing room on wide desktop */
+           .case-content { padding: 40px 60px; } 
            .back-bubble { left: 60px; bottom: 60px; }
         }
-        @media (max-width: 768px) { .case-content { padding: 30px 25px; } .title-row { margin-bottom: 5px; } .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
+        @media (max-width: 768px) { 
+          .case-content { padding: 25px; } 
+          .title-row { margin-bottom: 5px; gap: 30px; } 
+          .header-title { font-size: clamp(35px, 15vw, 80px); } /* Aggressive shrinking for mobile */
+          .back-bubble { bottom: 25px; left: 25px; width: 50px; height: 50px; } 
+        }
       `}</style>
       <Routes><Route path="/" element={<MainScene />} /></Routes>
     </Router>
