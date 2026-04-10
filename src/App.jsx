@@ -36,12 +36,7 @@ function Loader({ onExit }) {
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
-    const checkInterval = setInterval(() => {
-      if (progress >= 100) {
-        clearInterval(checkInterval)
-        setIsReadyToFinish(true)
-      }
-    }, 100)
+    const checkInterval = setInterval(() => { if (progress >= 100) { clearInterval(checkInterval); setIsReadyToFinish(true); } }, 100)
     const pauseTimer = setTimeout(() => { if (progress < 100 && vid) vid.pause() }, 500)
     return () => { clearInterval(checkInterval); clearTimeout(pauseTimer); }
   }, [progress])
@@ -56,7 +51,7 @@ function Loader({ onExit }) {
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
-        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
+        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" style={{ background: DARK_THEME }} />
         <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
@@ -204,7 +199,6 @@ function MainScene() {
         <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
-             {/* UPDATED COORDINATES PER REQUEST */}
              <group position={isMobile ? [0.71, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (<GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />))}
              </group>
@@ -220,13 +214,15 @@ function MainScene() {
             <h1 className="header-title">{activeCaseStudy?.title}</h1>
             <h1 className="header-title date-display">{activeCaseStudy?.year}</h1>
           </div>
-          <p className="case-description">{PLACEHOLDER_TEXT}</p>
+          <p className="case-description">{PLACE_TEXT}</p>
           <div style={{ height: '150vh' }} />
         </div>
       </div>
     </div>
   )
 }
+
+const PLACE_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel.";
 
 export default function App() {
   return (
@@ -254,40 +250,42 @@ export default function App() {
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
-
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        .case-content { width: 100%; max-width: none; padding: 40px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
-
-        /* NO WRAP & DYNAMIC COLLISION GAP */
-        .title-row { 
-          display: flex; 
-          justify-content: space-between; 
-          align-items: baseline; 
+        /* WEB CONTENT MARGINS - Redesign for full expansion */
+        .case-content { 
           width: 100%; 
-          margin-bottom: 20px; 
-          gap: 50px; 
-          white-space: nowrap; 
+          max-width: none; 
+          padding: 30px; /* Reduced margin to push type further out */
+          text-align: left; 
+          background: ${DARK_THEME}; 
+          position: relative; 
+          z-index: 10; 
+          box-sizing: border-box;
         }
 
+        .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; gap: 30px; white-space: nowrap; }
+        
+        /* HEADER TITLE - Fix for top cutoff */
         .header-title { 
           font-family: 'Thunder', sans-serif; 
-          font-size: clamp(40px, 12vw, 220px); 
-          line-height: 0.85; 
+          font-size: clamp(35px, 15vw, 240px); 
+          line-height: 1.0; /* Increased from 0.85 to fix cutoff */
+          padding-top: 15px; /* Extra room for tall letters */
           text-transform: uppercase; 
           margin: 0; 
-          flex-shrink: 1; /* Allow title to shrink on collision */
-          overflow: hidden;
+          flex-shrink: 1; 
+          overflow: visible; /* Ensure top isn't clipped */
         }
         
-        .date-display { flex-shrink: 0; } /* Year never shrinks */
+        .date-display { flex-shrink: 0; }
 
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
         
-        .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
+        .back-bubble { position: fixed; bottom: 30px; left: 30px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
         .back-bubble:hover { background: #eae5e3; transform: scale(1.1); }
@@ -297,17 +295,11 @@ export default function App() {
            .ui-overlay { bottom: 80px; max-width: 600px; } 
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
-           .case-content { padding: 40px 60px; } 
-           .back-bubble { left: 60px; bottom: 60px; }
-        }
-        @media (max-width: 768px) { 
-          .case-content { padding: 25px; } 
-          .title-row { margin-bottom: 5px; gap: 30px; } 
-          .header-title { font-size: clamp(35px, 15vw, 80px); } /* Aggressive shrinking for mobile */
-          .back-bubble { bottom: 25px; left: 25px; width: 50px; height: 50px; } 
+           .case-content { padding: 30px 40px; } /* Aligned wide desktop margins */
+           .back-bubble { left: 40px; bottom: 40px; }
         }
       `}</style>
       <Routes><Route path="/" element={<MainScene />} /></Routes>
     </Router>
   )
-} 
+}
