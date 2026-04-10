@@ -16,8 +16,8 @@ const CARTRIDGE_DATA = [
   { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' },
   { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' },
   { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
+  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
+  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
   { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' }
 ]
 
@@ -28,52 +28,35 @@ const PLACE_TEXT = "This is a few lines about the project, roughly outlining the
 function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
-  const [loaderStep, setLoaderStep] = useState('initial') // initial -> paused -> resuming -> exiting
+  const [isExiting, setIsExiting] = useState(false)
+  const hasTriggeredExit = useRef(false)
+  const pauseTimer = useRef(null)
 
-  // 1. Force initial playback and pause at 0.5s
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
-
-    const pauseTimer = setTimeout(() => {
-      // If we haven't already finished loading, pause.
-      // If we are already at 100%, skip the pause and just keep going.
-      if (progress < 100) {
-        vid.pause()
-        setLoaderStep('paused')
-      } else {
-        setLoaderStep('resuming')
-      }
-    }, 500)
-
-    return () => clearTimeout(pauseTimer)
+    if (progress < 100) {
+      pauseTimer.current = setTimeout(() => { vid.pause() }, 500)
+    }
+    return () => clearTimeout(pauseTimer.current)
   }, [])
 
-  // 2. Watch for 100% loading AND that we have reached the pause point
   useEffect(() => {
-    if (progress === 100 && loaderStep === 'paused') {
-      setLoaderStep('resuming')
-    }
-  }, [progress, loaderStep])
-
-  // 3. Handle the Exit sequence
-  useEffect(() => {
-    if (loaderStep === 'resuming') {
+    if (progress >= 100 && !hasTriggeredExit.current) {
+      hasTriggeredExit.current = true
+      clearTimeout(pauseTimer.current)
       if (videoRef.current) videoRef.current.play().catch(() => {})
-      
-      const slideDelay = setTimeout(() => {
-        setLoaderStep('exiting')
-        setTimeout(onExit, 1200) // Unmount after animation
+      setTimeout(() => {
+        setIsExiting(true)
+        setTimeout(onExit, 1100)
       }, 500)
-
-      return () => clearTimeout(slideDelay)
     }
-  }, [loaderStep, onExit])
+  }, [progress, onExit])
 
   return (
-    <div className={`loader-screen ${loaderStep === 'exiting' ? 'slide-down-exit' : ''}`}>
+    <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
         <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" style={{ background: DARK_THEME }} />
         <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
@@ -85,13 +68,15 @@ function Loader({ onExit }) {
 
 function VideoLayer({ src, active }) {
   const videoRef = useRef()
+  const [hasLoaded, setHasLoaded] = useState(false)
+  useEffect(() => { if (active && !hasLoaded) setHasLoaded(true) }, [active, hasLoaded])
   useEffect(() => {
-    if (videoRef.current) {
+    if (hasLoaded && videoRef.current) {
       if (active) videoRef.current.play().catch(() => {})
       else videoRef.current.pause()
     }
-  }, [active])
-  return <video ref={videoRef} src={src} className="bg-layer" muted loop playsInline style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
+  }, [active, hasLoaded])
+  return <video ref={videoRef} src={hasLoaded ? src : undefined} className="bg-layer" muted loop playsInline style={{ opacity: active ? 1 : 0, zIndex: active ? 2 : 1, pointerEvents: 'none' }} />
 }
 
 function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props }) {
@@ -166,6 +151,14 @@ function MainScene() {
     overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
   }
 
+  const closeCaseStudy = () => {
+    setActiveCaseStudy(null)
+    if (overlayRef.current) {
+        overlayRef.current.scrollTo(0, 0)
+        overlayRef.current.style.setProperty('--scroll-y', '0px')
+    }
+  }
+
   useLayoutEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
@@ -187,7 +180,7 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (activeCaseStudy && e.key === 'Escape') { setActiveCaseStudy(null); return; }
+      if (activeCaseStudy && e.key === 'Escape') { closeCaseStudy(); return; }
       if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
       if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
@@ -200,15 +193,14 @@ function MainScene() {
   return (
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
-      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
       
-      {/* Pre-fetching Images */}
-      <div style={{ display: 'none' }}>
-        {CARTRIDGE_DATA.map(item => <img key={item.id} src={item.headerImg} alt="" />)}
+      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}>
+        <span>&#x279A;</span>
       </div>
 
       <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
       <div className="ui-overlay"><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div></div>
+      
       <div className="canvas-container">
         <Canvas key={isMobile ? 'mobile' : 'desktop'} dpr={[1, 2]} gl={{ antialias: true, alpha: true }} camera={{ position: isMobile ? [4, 0.8, 4] : [5, 0.8, 5], fov: isMobile ? 25 : 10 }}>
           <Suspense fallback={null}>
@@ -220,6 +212,7 @@ function MainScene() {
           <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
         </Canvas>
       </div>
+
       <div ref={overlayRef} onScroll={onOverlayScroll} className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header"><div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} /></div>
         <div className="case-content">
@@ -265,11 +258,13 @@ export default function App() {
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
+        
         .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
         .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; gap: 30px; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
+        
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
