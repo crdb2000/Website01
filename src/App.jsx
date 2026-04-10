@@ -12,34 +12,13 @@ const FILL_COLOR = new THREE.Color('#eae6e4')
 const DARK_THEME = '#212020' 
 
 const CARTRIDGE_DATA = [
-  { 
-    model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', 
-    title: 'Showreel', year: '2025', headerImg: '/Web_Header_Reel_01.png' 
-  },
-  { 
-    model: '/Web_Cart_02_V1.glb', video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', 
-    title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' 
-  },
-  { 
-    model: '/Web_Cart_03_V1.glb', video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', 
-    title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' 
-  },
-  { 
-    model: '/Web_Cart_04_V1.glb', video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', 
-    title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' 
-  },
-  { 
-    model: '/Web_Cart_05_V1.glb', video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', 
-    title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' 
-  },
-  { 
-    model: '/Web_Cart_07_V1.glb', video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', 
-    title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png' 
-  },
-  { 
-    model: '/Web_Cart_08_V1.glb', video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', 
-    title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' 
-  }
+  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel', year: '2025', headerImg: '/Web_Header_Reel_01.png' },
+  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' },
+  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' },
+  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' },
+  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
+  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
+  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' }
 ]
 
 const PLACEHOLDER_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel."
@@ -50,21 +29,21 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
+  const hasTriggeredEnd = useRef(false)
   useEffect(() => {
     const vid = videoRef.current
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
-    const pauseCheck = setTimeout(() => { if (progress < 100) vid.pause() }, 500)
-    return () => clearTimeout(pauseCheck)
+    const checkTimer = setTimeout(() => { if (progress < 100 && vid) vid.pause() }, 500)
+    return () => clearTimeout(checkTimer)
   }, [])
   useEffect(() => {
-    if (progress >= 100) {
-      const resumeTimer = setTimeout(() => {
-        if (videoRef.current) videoRef.current.play().catch(() => {})
-        setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1100) }, 500)
-      }, 200)
-      return () => clearTimeout(resumeTimer)
+    if (progress === 100 && !hasTriggeredEnd.current) {
+      hasTriggeredEnd.current = true
+      if (videoRef.current) videoRef.current.play().catch(() => {})
+      const slideTimer = setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1100) }, 500)
+      return () => clearTimeout(slideTimer)
     }
   }, [progress, onExit])
   return (
@@ -244,15 +223,13 @@ function MainScene() {
         <div className="case-header">
            <div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} />
         </div>
-        
-        {/* UPDATED CONTENT AREA PER SCREENSHOT */}
         <div className="case-content">
           <div className="title-row">
             <h1 className="header-title">{activeCaseStudy?.title}</h1>
             <h1 className="header-title">{activeCaseStudy?.year}</h1>
           </div>
           <p className="case-description">{PLACEHOLDER_TEXT}</p>
-          <div style={{ height: '100vh' }} />
+          <div style={{ height: '150vh' }} />
         </div>
       </div>
     </div>
@@ -291,11 +268,11 @@ export default function App() {
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        /* CASE CONTENT LAYOUT */
+        /* EXPANSIVE WEB LAYOUT */
         .case-content { 
           width: 100%; 
-          max-width: 1400px; /* Wider to reach margins */
-          padding: 40px 60px; 
+          max-width: none; /* Removed fixed max-width */
+          padding: 40px 5vw; /* Using Viewport Width for dynamic margins */
           text-align: left; 
           background: ${DARK_THEME}; 
           position: relative; 
@@ -308,12 +285,12 @@ export default function App() {
           justify-content: space-between;
           align-items: baseline;
           width: 100%;
-          margin-bottom: 10px;
+          margin-bottom: 20px;
         }
 
         .header-title { 
           font-family: 'Thunder', sans-serif; 
-          font-size: clamp(60px, 12vw, 160px); /* Responsive sizing */
+          font-size: clamp(60px, 12vw, 220px); /* Increased max size for ultra-wide web */
           line-height: 0.85; 
           text-transform: uppercase; 
           margin: 0;
@@ -322,10 +299,10 @@ export default function App() {
         .case-description {
           font-family: degular, sans-serif;
           font-weight: 600;
-          font-size: clamp(16px, 2vw, 24px);
-          line-height: 1.3;
+          font-size: clamp(16px, 1.8vw, 28px); /* Proportional scaling */
+          line-height: 1.35;
           opacity: 1;
-          max-width: 100%; /* Spans full width like screenshot */
+          width: 100%;
           margin-top: 20px;
         }
 
@@ -343,6 +320,7 @@ export default function App() {
         @media (max-width: 768px) { 
           .case-content { padding: 30px 25px; }
           .title-row { margin-bottom: 5px; }
+          .header-title { font-size: 80px; }
           .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
         }
       `}</style>
