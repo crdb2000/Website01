@@ -16,12 +16,12 @@ const CARTRIDGE_DATA = [
   { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' },
   { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' },
   { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
+  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
+  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
   { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' }
 ]
 
-const PLACEHOLDER_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel."
+const PLACE_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel.";
 
 // --- COMPONENTS ---
 
@@ -29,29 +29,34 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-  const [isReadyToFinish, setIsReadyToFinish] = useState(false)
+  const playedEnd = useRef(false)
 
+  // Simplified logic: Just play and pause once. Resume at 100.
   useEffect(() => {
     const vid = videoRef.current
-    if (!vid) return
-    vid.currentTime = 0
-    vid.play().catch(() => {})
-    const checkInterval = setInterval(() => { if (progress >= 100) { clearInterval(checkInterval); setIsReadyToFinish(true); } }, 100)
-    const pauseTimer = setTimeout(() => { if (progress < 100 && vid) vid.pause() }, 500)
-    return () => { clearInterval(checkInterval); clearTimeout(pauseTimer); }
-  }, [progress])
+    if (vid) {
+      vid.currentTime = 0
+      vid.play().catch(() => {})
+      const t = setTimeout(() => { if(progress < 100) vid.pause() }, 500)
+      return () => clearTimeout(t)
+    }
+  }, [])
 
   useEffect(() => {
-    if (isReadyToFinish) {
-      if (videoRef.current) videoRef.current.play().catch(() => {})
-      setTimeout(() => { setIsExiting(true); setTimeout(onExit, 1200) }, 500)
+    if (progress >= 100 && !playedEnd.current) {
+      playedEnd.current = true
+      if (videoRef.current) videoRef.current.play()
+      setTimeout(() => {
+        setIsExiting(true)
+        setTimeout(onExit, 1100)
+      }, 500)
     }
-  }, [isReadyToFinish, onExit])
+  }, [progress, onExit])
 
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
       <div className="loader-content">
-        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" style={{ background: DARK_THEME }} />
+        <video ref={videoRef} src="/wink.mp4" muted playsInline className="wink-video" preload="auto" />
         <div className="loader-bar-container"><div className="loader-bar" style={{ width: `${progress}%` }} /></div>
         <p className="loader-text">itsconnorbannister — {Math.round(progress)}%</p>
       </div>
@@ -133,8 +138,6 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   )
 }
 
-// --- MAIN APPLICATION ---
-
 function MainScene() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [activeCaseStudy, setActiveCaseStudy] = useState(null)
@@ -144,14 +147,6 @@ function MainScene() {
 
   const onOverlayScroll = (e) => {
     overlayRef.current.style.setProperty('--scroll-y', `${e.target.scrollTop}px`);
-  }
-
-  const closeCaseStudy = () => {
-    setActiveCaseStudy(null)
-    if (overlayRef.current) {
-        overlayRef.current.scrollTo(0, 0)
-        overlayRef.current.style.setProperty('--scroll-y', '0px')
-    }
   }
 
   useLayoutEffect(() => {
@@ -175,7 +170,7 @@ function MainScene() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === 'Escape' && activeCaseStudy) { closeCaseStudy(); return; }
+      if (activeCaseStudy && e.key === 'Escape') { setActiveCaseStudy(null); return; }
       if (showLoader || activeCaseStudy) return
       if (e.key === 'ArrowLeft') setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))
       if (e.key === 'ArrowRight') setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))
@@ -188,11 +183,7 @@ function MainScene() {
   return (
     <div className="home-wrapper">
       {showLoader && <Loader onExit={() => setShowLoader(false)} />}
-      
-      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={closeCaseStudy}>
-        <span>&#x279A;</span>
-      </div>
-
+      <div className={`back-bubble ${activeCaseStudy ? 'visible' : ''}`} onClick={() => setActiveCaseStudy(null)}><span>&#x279A;</span></div>
       <div className="bg-container"><div className="bg-layer base-bg" />{CARTRIDGE_DATA.map((item, i) => (<VideoLayer key={i} src={item.video} active={hoveredIndex === i} />))}</div>
       <div className="ui-overlay"><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev >= 6 ? 0 : prev + 1))}> &lt; </div><div className={`select-button ${hoveredIndex !== null ? 'active' : ''}`} onClick={() => handleSelect()}>Select</div><div className="nav-button" onClick={() => setHoveredIndex((prev) => (prev === null || prev <= 0 ? 6 : prev - 1))}> &gt; </div></div>
       <div className="canvas-container">
@@ -206,7 +197,6 @@ function MainScene() {
           <EffectComposer multisampling={0}><ToneMapping mode={THREE.ACESFilmicToneMapping} exposure={3.0} /><Noise opacity={0.015} /></EffectComposer>
         </Canvas>
       </div>
-
       <div ref={overlayRef} onScroll={onOverlayScroll} className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header"><div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} /></div>
         <div className="case-content">
@@ -222,8 +212,6 @@ function MainScene() {
   )
 }
 
-const PLACE_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel.";
-
 export default function App() {
   return (
     <Router>
@@ -235,7 +223,7 @@ export default function App() {
         .loader-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 1000; display: flex; align-items: center; justify-content: center; transition: transform 1.0s cubic-bezier(0.85, 0, 1, 1); will-change: transform; }
         .loader-screen.slide-down-exit { transform: translateY(100%); }
         .loader-content { display: flex; flex-direction: column; align-items: center; width: 100%; }
-        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; }
+        .wink-video { width: 500px; height: 500px; max-width: 85vw; max-height: 85vw; margin-bottom: 5px; object-fit: cover; background: ${DARK_THEME}; }
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
@@ -250,39 +238,17 @@ export default function App() {
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
+
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        /* WEB CONTENT MARGINS - Redesign for full expansion */
-        .case-content { 
-          width: 100%; 
-          max-width: none; 
-          padding: 30px; /* Reduced margin to push type further out */
-          text-align: left; 
-          background: ${DARK_THEME}; 
-          position: relative; 
-          z-index: 10; 
-          box-sizing: border-box;
-        }
-
-        .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; gap: 30px; white-space: nowrap; }
-        
-        /* HEADER TITLE - Fix for top cutoff */
-        .header-title { 
-          font-family: 'Thunder', sans-serif; 
-          font-size: clamp(35px, 15vw, 240px); 
-          line-height: 1.0; /* Increased from 0.85 to fix cutoff */
-          padding-top: 15px; /* Extra room for tall letters */
-          text-transform: uppercase; 
-          margin: 0; 
-          flex-shrink: 1; 
-          overflow: visible; /* Ensure top isn't clipped */
-        }
-        
+        /* WEB LAYOUT */
+        .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
+        .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; gap: 30px; }
+        .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
-
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
         
         .back-bubble { position: fixed; bottom: 30px; left: 30px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
@@ -295,8 +261,17 @@ export default function App() {
            .ui-overlay { bottom: 80px; max-width: 600px; } 
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
-           .case-content { padding: 30px 40px; } /* Aligned wide desktop margins */
+           .case-content { padding: 30px 40px; } 
            .back-bubble { left: 40px; bottom: 40px; }
+        }
+
+        /* MOBILE LAYOUT FIX: Stack Title and Date */
+        @media (max-width: 768px) { 
+          .case-content { padding: 30px; }
+          .title-row { flex-direction: column; align-items: flex-start; gap: 0; margin-bottom: 20px; }
+          .header-title { font-size: 80px; white-space: normal; padding-top: 0; }
+          .date-display { align-self: flex-end; margin-top: -10px; } /* Push year below and to the right */
+          .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
         }
       `}</style>
       <Routes><Route path="/" element={<MainScene />} /></Routes>
