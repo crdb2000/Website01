@@ -16,8 +16,8 @@ const CARTRIDGE_DATA = [
   { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' },
   { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' },
   { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
+  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
+  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
   { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' }
 ]
 
@@ -29,29 +29,39 @@ function Loader({ onExit }) {
   const { progress } = useProgress()
   const videoRef = useRef()
   const [isExiting, setIsExiting] = useState(false)
-  const playedEnd = useRef(false)
+  const [hasResumed, setHasResumed] = useState(false)
 
-  // Simplified logic: Just play and pause once. Resume at 100.
+  // 1. Start and pause at 0.5s
   useEffect(() => {
     const vid = videoRef.current
     if (vid) {
       vid.currentTime = 0
       vid.play().catch(() => {})
-      const t = setTimeout(() => { if(progress < 100) vid.pause() }, 500)
+      const t = setTimeout(() => {
+        // Only pause if we aren't done yet
+        if (progress < 100) vid.pause()
+      }, 500)
       return () => clearTimeout(t)
     }
   }, [])
 
+  // 2. Strict check for 100% loading
   useEffect(() => {
-    if (progress >= 100 && !playedEnd.current) {
-      playedEnd.current = true
-      if (videoRef.current) videoRef.current.play()
-      setTimeout(() => {
+    if (progress === 100 && !hasResumed) {
+      setHasResumed(true)
+      const vid = videoRef.current
+      if (vid) vid.play().catch(() => {})
+      
+      // Timing the slide to match the animation
+      const slideT = setTimeout(() => {
         setIsExiting(true)
-        setTimeout(onExit, 1100)
+        // Cleanup unmount
+        setTimeout(onExit, 1200)
       }, 500)
+      
+      return () => clearTimeout(slideT)
     }
-  }, [progress, onExit])
+  }, [progress, onExit, hasResumed])
 
   return (
     <div className={`loader-screen ${isExiting ? 'slide-down-exit' : ''}`}>
@@ -227,6 +237,7 @@ export default function App() {
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
+
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -244,9 +255,9 @@ export default function App() {
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
         .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        /* WEB LAYOUT */
+        /* CASE CONTENT */
         .case-content { width: 100%; max-width: none; padding: 30px; text-align: left; background: ${DARK_THEME}; position: relative; z-index: 10; box-sizing: border-box; }
-        .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 10px; gap: 30px; }
+        .title-row { display: flex; justify-content: space-between; align-items: baseline; width: 100%; margin-bottom: 20px; gap: 30px; }
         .header-title { font-family: 'Thunder', sans-serif; font-size: clamp(35px, 15vw, 240px); line-height: 1.0; padding-top: 15px; text-transform: uppercase; margin: 0; white-space: nowrap; }
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
@@ -261,16 +272,20 @@ export default function App() {
            .ui-overlay { bottom: 80px; max-width: 600px; } 
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
-           .case-content { padding: 30px 40px; } 
+           .case-content { padding: 40px; } 
            .back-bubble { left: 40px; bottom: 40px; }
         }
 
-        /* MOBILE LAYOUT FIX: Stack Title and Date */
+        /* MOBILE TYPOGRAPHY FIX */
         @media (max-width: 768px) { 
           .case-content { padding: 30px; }
           .title-row { flex-direction: column; align-items: flex-start; gap: 0; margin-bottom: 20px; }
-          .header-title { font-size: 80px; white-space: normal; padding-top: 0; }
-          .date-display { align-self: flex-end; margin-top: -10px; } /* Push year below and to the right */
+          .header-title { font-size: 80px; white-space: normal; padding-top: 0; line-height: 0.9; }
+          .date-display { 
+             font-size: 40px; /* Half of 80px */
+             margin-top: 5px; 
+             align-self: flex-start; /* Ensure left alignment */
+          }
           .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
         }
       `}</style>
