@@ -12,14 +12,37 @@ const FILL_COLOR = new THREE.Color('#eae6e4')
 const DARK_THEME = '#212020' 
 
 const CARTRIDGE_DATA = [
-  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel', headerImg: '/Web_Header_Reel_01.png' },
-  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', headerImg: '/Web_Header_LBL_01.png' },
-  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', headerImg: '/Web_Header_F1_01.png' },
-  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', headerImg: '/Web_Header_Sendwave_01.png' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', headerImg: '/Web_Header_Holds_01.png' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', headerImg: '/Web_Header_DND_01.png' },
-  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', headerImg: '/Web_Header_Further_01.png' }
+  { 
+    model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', 
+    title: 'Showreel', year: '2025', headerImg: '/Web_Header_Reel_01.png' 
+  },
+  { 
+    model: '/Web_Cart_02_V1.glb', video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', 
+    title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' 
+  },
+  { 
+    model: '/Web_Cart_03_V1.glb', video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', 
+    title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' 
+  },
+  { 
+    model: '/Web_Cart_04_V1.glb', video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', 
+    title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' 
+  },
+  { 
+    model: '/Web_Cart_05_V1.glb', video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', 
+    title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' 
+  },
+  { 
+    model: '/Web_Cart_07_V1.glb', video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', 
+    title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png' 
+  },
+  { 
+    model: '/Web_Cart_08_V1.glb', video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', 
+    title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' 
+  }
 ]
+
+const PLACEHOLDER_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel."
 
 // --- COMPONENTS ---
 
@@ -32,7 +55,7 @@ function Loader({ onExit }) {
     if (!vid) return
     vid.currentTime = 0
     vid.play().catch(() => {})
-    const pauseCheck = setTimeout(() => { if (progress < 100 && vid) vid.pause() }, 500)
+    const pauseCheck = setTimeout(() => { if (progress < 100) vid.pause() }, 500)
     return () => clearTimeout(pauseCheck)
   }, [])
   useEffect(() => {
@@ -157,12 +180,17 @@ function MainScene() {
   }, [])
 
   useEffect(() => {
-    if (activeCaseStudy) {
-        document.title = `${activeCaseStudy.title} | itsconnorbannister`
-        if (overlayRef.current) overlayRef.current.scrollTo(0, 0)
-    }
+    if (activeCaseStudy) document.title = `${activeCaseStudy.title} | itsconnorbannister`
     else document.title = "Selection | itsconnorbannister"
   }, [activeCaseStudy])
+
+  const handleSelect = (idx) => {
+    const targetIdx = idx !== undefined ? idx : hoveredIndex
+    if (targetIdx !== null) {
+      if (isMobile && hoveredIndex !== targetIdx) setHoveredIndex(targetIdx)
+      else setActiveCaseStudy(CARTRIDGE_DATA[targetIdx])
+    }
+  }
 
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -175,14 +203,6 @@ function MainScene() {
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
   }, [hoveredIndex, activeCaseStudy, showLoader])
-
-  const handleSelect = (idx) => {
-    const targetIdx = idx !== undefined ? idx : hoveredIndex
-    if (targetIdx !== null) {
-      if (isMobile && hoveredIndex !== targetIdx) setHoveredIndex(targetIdx)
-      else setActiveCaseStudy(CARTRIDGE_DATA[targetIdx])
-    }
-  }
 
   return (
     <div className="home-wrapper">
@@ -211,10 +231,7 @@ function MainScene() {
              <Environment files="/the_sky_is_on_fire_2kBW.hdr" intensity={35} rotation={[0, Math.PI * (200 / 180), 0]} />
              <group position={isMobile ? [0.73, 0.1, 0.4] : [0.75, -0.1, 0.4]}>
                 {CARTRIDGE_DATA.map((item, i) => (
-                  <GbaInstance 
-                    key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile}
-                    onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} 
-                  />
+                  <GbaInstance key={i} index={i} url={item.model} active={hoveredIndex === i} isMobile={isMobile} onHover={setHoveredIndex} onClick={handleSelect} position={[i * -0.28, 0, i * -0.15]} />
                 ))}
              </group>
           </Suspense>
@@ -222,14 +239,20 @@ function MainScene() {
         </Canvas>
       </div>
 
+      {/* Case Study Overlay */}
       <div ref={overlayRef} onScroll={onOverlayScroll} className={`case-study-overlay ${activeCaseStudy ? 'open' : ''}`}>
         <div className="case-header">
            <div className="case-header-img" style={{ backgroundImage: activeCaseStudy?.headerImg ? `url(${activeCaseStudy.headerImg})` : 'none' }} />
         </div>
+        
+        {/* UPDATED CONTENT AREA PER SCREENSHOT */}
         <div className="case-content">
-          <h1 className="header-title">{activeCaseStudy?.title}</h1>
-          <p className="case-description">Case study details for {activeCaseStudy?.title} coming soon.</p>
-          <div style={{ height: '150vh' }} />
+          <div className="title-row">
+            <h1 className="header-title">{activeCaseStudy?.title}</h1>
+            <h1 className="header-title">{activeCaseStudy?.year}</h1>
+          </div>
+          <p className="case-description">{PLACEHOLDER_TEXT}</p>
+          <div style={{ height: '100vh' }} />
         </div>
       </div>
     </div>
@@ -251,7 +274,6 @@ export default function App() {
         .loader-bar-container { width: 500px; max-width: 85vw; height: 2px; background: rgba(234, 229, 227, 0.1); border-radius: 2px; margin-bottom: 12px; overflow: hidden; }
         .loader-bar { height: 100%; background: #eae5e3; transition: width 0.3s ease; }
         .loader-text { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.6; }
-
         .bg-container { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
         .bg-layer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; transition: opacity 0.8s ease-in-out; }
         .base-bg { z-index: 0; background-image: url('/bg.png'); background-size: cover; background-position: center; }
@@ -266,35 +288,47 @@ export default function App() {
 
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
+        .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
+        .case-header-img { position: absolute; top: -15vh; left: 0; width: 100%; height: 80vh; background-size: cover; background-position: center; background-repeat: no-repeat; transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); will-change: transform; }
         
-        /* PARALLAX BOX SETTINGS */
-        .case-header { 
+        /* CASE CONTENT LAYOUT */
+        .case-content { 
           width: 100%; 
-          height: 50vh; 
-          overflow: hidden; 
+          max-width: 1400px; /* Wider to reach margins */
+          padding: 40px 60px; 
+          text-align: left; 
+          background: ${DARK_THEME}; 
           position: relative; 
-          flex-shrink: 0; 
-          background-color: #eae5e3; 
+          z-index: 10; 
+          box-sizing: border-box;
         }
 
-        .case-header-img { 
-          position: absolute; 
-          top: -15vh; /* Initial offset to start centered ( (80-50)/2 = 15 ) */
-          left: 0; 
-          width: 100%; 
-          height: 80vh; /* Taller image */
-          background-size: cover; 
-          background-position: center; 
-          background-repeat: no-repeat; 
-          /* Math: Move -15vh more over the course of the 50vh header scroll */
-          transform: translateY(calc(var(--scroll-y, 0px) * -0.3)); 
-          will-change: transform; 
+        .title-row {
+          display: flex;
+          justify-content: space-between;
+          align-items: baseline;
+          width: 100%;
+          margin-bottom: 10px;
         }
 
-        .case-content { width: 100%; max-width: 1200px; padding: 80px 40px; text-align: center; background: ${DARK_THEME}; position: relative; z-index: 10; }
-        .header-title { font-family: 'Thunder', sans-serif; font-size: 120px; line-height: 0.9; text-transform: uppercase; margin-bottom: 20px; }
-        .case-description { font-family: degular, sans-serif; font-size: 18px; opacity: 0.7; max-width: 600px; margin: 0 auto; }
-        
+        .header-title { 
+          font-family: 'Thunder', sans-serif; 
+          font-size: clamp(60px, 12vw, 160px); /* Responsive sizing */
+          line-height: 0.85; 
+          text-transform: uppercase; 
+          margin: 0;
+        }
+
+        .case-description {
+          font-family: degular, sans-serif;
+          font-weight: 600;
+          font-size: clamp(16px, 2vw, 24px);
+          line-height: 1.3;
+          opacity: 1;
+          max-width: 100%; /* Spans full width like screenshot */
+          margin-top: 20px;
+        }
+
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
@@ -305,9 +339,12 @@ export default function App() {
            .ui-overlay { bottom: 80px; max-width: 600px; } 
            .nav-button { width: 70px; height: 70px; font-size: 24px; } 
            .select-button { height: 50px; font-size: 16px; } 
-           .header-title { font-size: 200px; } 
         }
-        @media (max-width: 768px) { .header-title { font-size: 80px; } .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } }
+        @media (max-width: 768px) { 
+          .case-content { padding: 30px 25px; }
+          .title-row { margin-bottom: 5px; }
+          .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
+        }
       `}</style>
       <Routes><Route path="/" element={<MainScene />} /></Routes>
     </Router>
