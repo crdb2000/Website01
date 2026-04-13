@@ -18,7 +18,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "I’ve been incredibly fortunate to collaborate with a host of talented creatives and fantastic clients. This showreel offers a quick dive into a curated selection of my best and most recent work." 
+        text: "I've been lucky enough to work with some amazingly talented creatives and great clients. This showreel is a quick look at my best and most recent work." 
       },
       { 
         type: 'meta-grid', 
@@ -32,7 +32,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "Less But Loud is a 20-second 3D motion piece that reimagines a minimalist guitar overdrive pedal through the lens of Dieter Rams’ iconic design ethos. A love letter to one of my favorite designers, this project blends 60s and 70s Braun-inspired industrial form with modern motion design storytelling." 
+        text: "Less But Loud is a 20-second 3D motion piece that reimagines a minimalist guitar overdrive pedal through the lens of Dieter Rams' iconic design ethos. It's a nod to one of my favourite designers, blending 60s and 70s Braun-inspired forms with modern motion design." 
       },
       { 
         type: 'meta-grid', 
@@ -46,7 +46,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "2025 marked a landmark year for Formula 1®, celebrating the sport’s 75th anniversary. The challenge was to build a brand system for the EA Sports game that could meet the moment—creating a bold and distinct visual language for the new season." 
+        text: "2025 marked a landmark year for Formula 1, celebrating the sport's 75th anniversary. The challenge was to build a brand system for the EA Sports game that could meet the moment, creating a bold and distinct visual language for the new season." 
       },
       { 
         type: 'meta-grid', 
@@ -60,7 +60,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "Helping the diaspora through international money transfers, Sendwave partnered with DesignStudio to rebrand and realign their visual identity with their core mission. Representing a positive transfer of wealth and energy, the new design system flexes and flows with motion at its heart." 
+        text: "Helping people of the diaspora through international money transfers, Sendwave worked with DesignStudio to rebrand and realign their look with their core mission. Representing a positive transfer of wealth and energy, the new design system flexes and flows with motion at its heart." 
       },
       { 
         type: 'meta-grid', 
@@ -74,7 +74,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "A near two-minute explainer video detailing the different styles of holds you can expect to find when rock climbing. Because the sport is inherently community-focused, I collaborated with friends to provide voiceovers, input on storyboards, and sound design." 
+        text: "A near two-minute explainer video detailing the different styles of holds you can expect to find when rock climbing. With the sport being so community-focused, I brought on friends to help with voiceovers, storyboards and sound design." 
       },
       { 
         type: 'meta-grid', 
@@ -88,7 +88,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "A series of satisfying, looping animations exploring the various forms of dice used in Dungeons & Dragons. After a spree of 2D branding projects, I sought out an ambitious 3D personal exploration to push my technical limits." 
+        text: "A selection of satisfying, looping animations exploring the various forms of dice used in Dungeons and Dragons. After a spree of 2D branding projects, I wanted to take on an ambitious 3D personal exploration." 
       },
       { 
         type: 'meta-grid', 
@@ -102,7 +102,7 @@ const CARTRIDGE_DATA = [
     content: [
       { 
         type: 'intro-text', 
-        text: "DesignStudio becomes Further. Rebranding a legendary studio with 15 years of design history was an incredible opportunity to help usher in a new era. By creating a 'magnetic noise' to reflect the magnetic brands they work with, motion became the fundamental driving force of this identity." 
+        text: "DesignStudio becomes Further. Rebranding the rebrander after 15 years of design legacy, it was amazing to be able to bring the new era of the studio to life. We created a magnetic noise to reflect the brands they work with, and motion was fundamental to this identity." 
       },
       { 
         type: 'meta-grid', 
@@ -243,7 +243,6 @@ function CaseContentBuilder({ content }) {
           case 'meta-grid':
             return (
               <div key={index} className="meta-grid">
-                {/* Dynamically checks if Agency is N/A. If it is, it hides the Agency column cleanly! */}
                 {block.client && block.client !== 'N/A' && <div className="meta-item"><span>Client</span><p>{block.client}</p></div>}
                 {block.agency && block.agency !== 'N/A' && <div className="meta-item"><span>Agency</span><p>{block.agency}</p></div>}
                 {block.role && <div className="meta-item"><span>Role</span><p>{block.role}</p></div>}
@@ -436,7 +435,6 @@ export default function App() {
         /* CASE STUDY CONTENT BLOCKS */
         .case-content-blocks { display: flex; flex-direction: column; gap: 60px; margin-top: 40px; padding-bottom: 100px; }
         
-        /* Grid automatically adjusts if there are 3 items or 4 items! */
         .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; border-top: 1px solid rgba(234, 229, 227, 0.2); padding-top: 30px; }
         .meta-item span { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; display: block; margin-bottom: 5px; }
         .meta-item p { font-size: 18px; line-height: 1.2; margin: 0; }
