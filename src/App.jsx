@@ -11,46 +11,107 @@ const NEW_WHITE = new THREE.Color('#eae5e3')
 const FILL_COLOR = new THREE.Color('#eae6e4') 
 const DARK_THEME = '#212020' 
 
+// --- PROJECT DATA ---
 const CARTRIDGE_DATA = [
   { 
-    model: '/Cartridge_Web_04.glb', 
-    video: '/WebBG_Reel_01_NewLarge.mp4', 
-    id: 'showreel', 
-    title: 'Showreel', 
-    year: '2025', 
-    headerImg: '/Web_Header_Reel_01.png',
-    // NEW: Dynamic Content Layout
+    model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel', year: '2025', headerImg: '/Web_Header_Reel_01.png',
     content: [
       { 
         type: 'intro-text', 
-        text: 'A collection of my latest work combining React Three Fiber, GLSL shaders, and motion design to build immersive web experiences. This showreel highlights the intersection of creative coding and interactive 3D.' 
+        text: "I’ve been incredibly fortunate to collaborate with a host of talented creatives and fantastic clients. This showreel offers a quick dive into a curated selection of my best and most recent work." 
       },
       { 
         type: 'meta-grid', 
-        role: 'Design & Development', 
-        client: 'Personal', 
-        tech: 'R3F, React Spring, Vite' 
-      },
-      { 
-        type: 'full-image', 
-        src: '/Reel_Mockup_01.jpg' // Replace with your actual image path when ready
-      },
-      { 
-        type: 'half-image-grid', 
-        img1: '/Reel_Mockup_02.jpg', 
-        img2: '/Reel_Mockup_03.jpg' 
+        client: 'Personal', agency: 'N/A', role: 'Design, Direction & Animation', tech: 'After Effects, Cinema 4D, Redshift, Cavalry, TouchDesigner, Houdini' 
       }
+      // Add images/videos here later!
     ]
   },
-  { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' },
-  { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' },
-  { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' },
-  { model: '/Web_Cart_05_V1.glb',   video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png' },
-  { model: '/Web_Cart_07_V1.glb',   video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png' },
-  { model: '/Web_Cart_08_V1.glb',   video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png' }
+  { 
+    model: '/Web_Cart_02_V1.glb', video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png',
+    content: [
+      { 
+        type: 'intro-text', 
+        text: "Less But Loud is a 20-second 3D motion piece that reimagines a minimalist guitar overdrive pedal through the lens of Dieter Rams’ iconic design ethos. A love letter to one of my favorite designers, this project blends 60s and 70s Braun-inspired industrial form with modern motion design storytelling." 
+      },
+      { 
+        type: 'meta-grid', 
+        client: 'Personal', agency: 'N/A', role: 'Design, Direction & Animation', tech: 'Cinema 4D, Redshift, After Effects' 
+      }
+      // Add images/videos here later!
+    ]
+  },
+  { 
+    model: '/Web_Cart_03_V1.glb', video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png',
+    content: [
+      { 
+        type: 'intro-text', 
+        text: "2025 marked a landmark year for Formula 1®, celebrating the sport’s 75th anniversary. The challenge was to build a brand system for the EA Sports game that could meet the moment—creating a bold and distinct visual language for the new season." 
+      },
+      { 
+        type: 'meta-grid', 
+        client: 'EA Sports', agency: 'Further (prev. DesignStudio)', role: 'Motion Design', tech: 'After Effects, Cinema 4D, Redshift, TouchDesigner' 
+      }
+      // Add images/videos here later!
+    ]
+  },
+  { 
+    model: '/Web_Cart_04_V1.glb', video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png',
+    content: [
+      { 
+        type: 'intro-text', 
+        text: "Helping the diaspora through international money transfers, Sendwave partnered with DesignStudio to rebrand and realign their visual identity with their core mission. Representing a positive transfer of wealth and energy, the new design system flexes and flows with motion at its heart." 
+      },
+      { 
+        type: 'meta-grid', 
+        client: 'Sendwave', agency: 'Further (prev. DesignStudio)', role: 'Motion Design', tech: 'After Effects, Illustrator' 
+      }
+      // Add images/videos here later!
+    ]
+  },
+  { 
+    model: '/Web_Cart_05_V1.glb', video: '/WebBG_Holds_01_NewLarge.mp4', id: 'hold-friends', title: 'Hold Friends', year: '2024', headerImg: '/Web_Header_Holds_01.png',
+    content: [
+      { 
+        type: 'intro-text', 
+        text: "A near two-minute explainer video detailing the different styles of holds you can expect to find when rock climbing. Because the sport is inherently community-focused, I collaborated with friends to provide voiceovers, input on storyboards, and sound design." 
+      },
+      { 
+        type: 'meta-grid', 
+        client: 'Personal', agency: 'N/A', role: 'Direction & Motion Design', tech: 'After Effects, Cavalry, Cinema 4D' 
+      }
+      // Add images/videos here later!
+    ]
+  },
+  { 
+    model: '/Web_Cart_07_V1.glb', video: '/WebBG_DND_01_NewLarge.mp4', id: 'dice-n-dice', title: 'Dice N Dice', year: '2024', headerImg: '/Web_Header_DND_01.png',
+    content: [
+      { 
+        type: 'intro-text', 
+        text: "A series of satisfying, looping animations exploring the various forms of dice used in Dungeons & Dragons. After a spree of 2D branding projects, I sought out an ambitious 3D personal exploration to push my technical limits." 
+      },
+      { 
+        type: 'meta-grid', 
+        client: 'Personal', agency: 'N/A', role: 'Design, Direction & Animation', tech: 'Cinema 4D, Redshift, After Effects, Cavalry' 
+      }
+      // Add images/videos here later!
+    ]
+  },
+  { 
+    model: '/Web_Cart_08_V1.glb', video: '/WebBG_Further_01_NewLarge.mp4', id: 'further', title: 'Further', year: '2025', headerImg: '/Web_Header_Further_01.png',
+    content: [
+      { 
+        type: 'intro-text', 
+        text: "DesignStudio becomes Further. Rebranding a legendary studio with 15 years of design history was an incredible opportunity to help usher in a new era. By creating a 'magnetic noise' to reflect the magnetic brands they work with, motion became the fundamental driving force of this identity." 
+      },
+      { 
+        type: 'meta-grid', 
+        client: 'Further', agency: 'Further (prev. DesignStudio)', role: 'Motion Design', tech: 'TouchDesigner, After Effects, Cinema 4D' 
+      }
+      // Add images/videos here later!
+    ]
+  }
 ]
-
-const PLACE_TEXT = "This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel. This is a few lines about the project, roughly outlining the concept, the studio worked with if applicable and the outcomes and lookfeel.";
 
 // --- COMPONENTS ---
 
@@ -169,9 +230,8 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   )
 }
 
-// --- NEW: CONTENT BUILDER ---
 function CaseContentBuilder({ content }) {
-  if (!content) return <p className="case-description">{PLACE_TEXT}</p>; // Fallback
+  if (!content) return null;
 
   return (
     <div className="case-content-blocks">
@@ -183,9 +243,11 @@ function CaseContentBuilder({ content }) {
           case 'meta-grid':
             return (
               <div key={index} className="meta-grid">
-                <div className="meta-item"><span>Role</span><p>{block.role}</p></div>
-                <div className="meta-item"><span>Client</span><p>{block.client}</p></div>
-                <div className="meta-item"><span>Tech</span><p>{block.tech}</p></div>
+                {/* Dynamically checks if Agency is N/A. If it is, it hides the Agency column cleanly! */}
+                {block.client && block.client !== 'N/A' && <div className="meta-item"><span>Client</span><p>{block.client}</p></div>}
+                {block.agency && block.agency !== 'N/A' && <div className="meta-item"><span>Agency</span><p>{block.agency}</p></div>}
+                {block.role && <div className="meta-item"><span>Role</span><p>{block.role}</p></div>}
+                {block.tech && <div className="meta-item"><span>Tech</span><p>{block.tech}</p></div>}
               </div>
             );
 
@@ -201,6 +263,38 @@ function CaseContentBuilder({ content }) {
               <div key={index} className="half-image-grid">
                 <img src={block.img1} alt="Case Study Detail Left" loading="lazy" />
                 <img src={block.img2} alt="Case Study Detail Right" loading="lazy" />
+              </div>
+            );
+            
+          case 'image-text-split':
+            return (
+              <div key={index} className={`image-text-split ${block.flip ? 'flipped' : ''}`}>
+                <div className="split-image">
+                  <img src={block.imgSrc} alt="Feature" loading="lazy" />
+                </div>
+                <div className="split-content">
+                  {block.title && <h3 className="split-title">{block.title}</h3>}
+                  {block.text && <p className="split-text">{block.text}</p>}
+                  {block.points && (
+                    <ul className="split-points">
+                      {block.points.map((point, i) => (<li key={i}>{point}</li>))}
+                    </ul>
+                  )}
+                </div>
+              </div>
+            );
+
+          case 'video-mp4':
+            return (
+              <div key={index} className="full-video-block">
+                <video src={block.src} autoPlay loop muted playsInline />
+              </div>
+            );
+
+          case 'video-embed':
+            return (
+              <div key={index} className="video-embed-block">
+                <iframe src={block.url} frameBorder="0" allow="autoplay; fullscreen; picture-in-picture" allowFullScreen title="Project Video"></iframe>
               </div>
             );
 
@@ -293,7 +387,6 @@ function MainScene() {
             <h1 className="header-title date-display">{activeCaseStudy?.year}</h1>
           </div>
           
-          {/* RENDER DYNAMIC CONTENT HERE */}
           <CaseContentBuilder content={activeCaseStudy?.content} />
 
         </div>
@@ -340,15 +433,34 @@ export default function App() {
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
         
-        /* NEW: CASE STUDY CONTENT BLOCKS */
+        /* CASE STUDY CONTENT BLOCKS */
         .case-content-blocks { display: flex; flex-direction: column; gap: 60px; margin-top: 40px; padding-bottom: 100px; }
-        .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; border-top: 1px solid rgba(234, 229, 227, 0.2); padding-top: 30px; }
+        
+        /* Grid automatically adjusts if there are 3 items or 4 items! */
+        .meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 30px; border-top: 1px solid rgba(234, 229, 227, 0.2); padding-top: 30px; }
         .meta-item span { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; display: block; margin-bottom: 5px; }
         .meta-item p { font-size: 18px; line-height: 1.2; margin: 0; }
+        
         .full-image-block { width: 100%; border-radius: 8px; overflow: hidden; background: rgba(234, 229, 227, 0.05); }
         .full-image-block img { width: 100%; height: auto; display: block; object-fit: cover; }
         .half-image-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
         .half-image-grid img { width: 100%; height: auto; display: block; border-radius: 8px; background: rgba(234, 229, 227, 0.05); }
+
+        .image-text-split { display: grid; grid-template-columns: 1fr 1fr; gap: 50px; align-items: center; }
+        .image-text-split.flipped .split-image { order: 2; }
+        .split-image { width: 100%; border-radius: 8px; overflow: hidden; background: rgba(234, 229, 227, 0.05); }
+        .split-image img { width: 100%; height: auto; display: block; object-fit: cover; }
+        .split-content { display: flex; flex-direction: column; justify-content: center; }
+        .split-title { font-family: degular, sans-serif; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 20px; color: #eae5e3; }
+        .split-text { font-family: degular, sans-serif; font-size: 18px; line-height: 1.4; opacity: 0.8; margin-bottom: 20px; }
+        .split-points { list-style: none; padding: 0; margin: 0; }
+        .split-points li { position: relative; padding-left: 20px; font-size: 16px; line-height: 1.4; opacity: 0.8; margin-bottom: 12px; }
+        .split-points li::before { content: '—'; position: absolute; left: 0; color: #eae5e3; opacity: 0.5; }
+
+        .full-video-block { width: 100%; border-radius: 8px; overflow: hidden; background: rgba(234, 229, 227, 0.05); }
+        .full-video-block video { width: 100%; height: auto; display: block; object-fit: cover; }
+        .video-embed-block { position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden; border-radius: 8px; background: rgba(234, 229, 227, 0.05); }
+        .video-embed-block iframe { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
 
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
@@ -370,10 +482,11 @@ export default function App() {
           .date-display { font-size: 40px; margin-top: 0px; align-self: flex-start; }
           .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
           
-          /* NEW: Responsive overrides for the blocks */
           .case-content-blocks { gap: 40px; padding-bottom: 60px; }
           .meta-grid { grid-template-columns: 1fr; gap: 20px; }
           .half-image-grid { grid-template-columns: 1fr; gap: 20px; }
+          .image-text-split { grid-template-columns: 1fr; gap: 30px; }
+          .image-text-split.flipped .split-image { order: initial; }
         }
       `}</style>
       <Routes><Route path="/" element={<MainScene />} /></Routes>
