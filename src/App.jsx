@@ -4,7 +4,7 @@ import { useGLTF, Environment, useProgress } from '@react-three/drei'
 import { EffectComposer, Noise, ToneMapping } from '@react-three/postprocessing'
 import { useSpring, animated } from '@react-spring/three'
 import * as THREE from 'three'
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 
 // --- DESIGN CONSTANTS ---
 const NEW_WHITE = new THREE.Color('#eae5e3') 
@@ -12,7 +12,36 @@ const FILL_COLOR = new THREE.Color('#eae6e4')
 const DARK_THEME = '#212020' 
 
 const CARTRIDGE_DATA = [
-  { model: '/Cartridge_Web_04.glb', video: '/WebBG_Reel_01_NewLarge.mp4', id: 'showreel', title: 'Showreel', year: '2025', headerImg: '/Web_Header_Reel_01.png' },
+  { 
+    model: '/Cartridge_Web_04.glb', 
+    video: '/WebBG_Reel_01_NewLarge.mp4', 
+    id: 'showreel', 
+    title: 'Showreel', 
+    year: '2025', 
+    headerImg: '/Web_Header_Reel_01.png',
+    // NEW: Dynamic Content Layout
+    content: [
+      { 
+        type: 'intro-text', 
+        text: 'A collection of my latest work combining React Three Fiber, GLSL shaders, and motion design to build immersive web experiences. This showreel highlights the intersection of creative coding and interactive 3D.' 
+      },
+      { 
+        type: 'meta-grid', 
+        role: 'Design & Development', 
+        client: 'Personal', 
+        tech: 'R3F, React Spring, Vite' 
+      },
+      { 
+        type: 'full-image', 
+        src: '/Reel_Mockup_01.jpg' // Replace with your actual image path when ready
+      },
+      { 
+        type: 'half-image-grid', 
+        img1: '/Reel_Mockup_02.jpg', 
+        img2: '/Reel_Mockup_03.jpg' 
+      }
+    ]
+  },
   { model: '/Web_Cart_02_V1.glb',   video: '/WebBG_LBL_01_NewLarge.mp4', id: 'less-but-loud', title: 'Less But Loud', year: '2025', headerImg: '/Web_Header_LBL_01.png' },
   { model: '/Web_Cart_03_V1.glb',   video: '/WebBG_F1_01_NewLarge.mp4', id: 'f125', title: 'EA Sports F125', year: '2025', headerImg: '/Web_Header_F1_01.png' },
   { model: '/Web_Cart_04_V1.glb',   video: '/WebBG_SW_01_NewLarge.mp4', id: 'sendwave', title: 'Sendwave', year: '2024', headerImg: '/Web_Header_Sendwave_01.png' },
@@ -140,6 +169,49 @@ function GbaInstance({ index, url, onHover, onClick, active, isMobile, ...props 
   )
 }
 
+// --- NEW: CONTENT BUILDER ---
+function CaseContentBuilder({ content }) {
+  if (!content) return <p className="case-description">{PLACE_TEXT}</p>; // Fallback
+
+  return (
+    <div className="case-content-blocks">
+      {content.map((block, index) => {
+        switch (block.type) {
+          case 'intro-text':
+            return <p key={index} className="case-description">{block.text}</p>;
+            
+          case 'meta-grid':
+            return (
+              <div key={index} className="meta-grid">
+                <div className="meta-item"><span>Role</span><p>{block.role}</p></div>
+                <div className="meta-item"><span>Client</span><p>{block.client}</p></div>
+                <div className="meta-item"><span>Tech</span><p>{block.tech}</p></div>
+              </div>
+            );
+
+          case 'full-image':
+            return (
+              <div key={index} className="full-image-block">
+                <img src={block.src} alt="Case Study Detail" loading="lazy" />
+              </div>
+            );
+
+          case 'half-image-grid':
+            return (
+              <div key={index} className="half-image-grid">
+                <img src={block.img1} alt="Case Study Detail Left" loading="lazy" />
+                <img src={block.img2} alt="Case Study Detail Right" loading="lazy" />
+              </div>
+            );
+
+          default:
+            return null;
+        }
+      })}
+    </div>
+  );
+}
+
 function MainScene() {
   const [hoveredIndex, setHoveredIndex] = useState(null)
   const [activeCaseStudy, setActiveCaseStudy] = useState(null)
@@ -220,8 +292,10 @@ function MainScene() {
             <h1 className="header-title">{activeCaseStudy?.title}</h1>
             <h1 className="header-title date-display">{activeCaseStudy?.year}</h1>
           </div>
-          <p className="case-description">{PLACE_TEXT}</p>
-          <div style={{ height: '150vh' }} />
+          
+          {/* RENDER DYNAMIC CONTENT HERE */}
+          <CaseContentBuilder content={activeCaseStudy?.content} />
+
         </div>
       </div>
     </div>
@@ -254,6 +328,7 @@ export default function App() {
         .select-button { height: 45px; padding: 0 35px; border-radius: 40px; background: rgba(234, 229, 227, 0.05); border: 1px solid rgba(234, 229, 227, 0.1); color: rgba(234, 229, 227, 0.3); font-weight: 600; letter-spacing: 1px; font-size: 14px; cursor: pointer; transition: all 0.3s; user-select: none; }
         .select-button.active { background: #eae5e3; color: ${DARK_THEME}; transform: scale(1.1); }
         .nav-button:active, .select-button:active { transform: scale(0.9); }
+        
         .case-study-overlay { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: ${DARK_THEME}; z-index: 500; transition: transform 0.8s cubic-bezier(0.16, 1, 0.3, 1); transform: translateY(100%); display: flex; flex-direction: column; align-items: center; overflow-y: auto; overflow-x: hidden; }
         .case-study-overlay.open { transform: translateY(0); }
         .case-header { width: 100%; height: 50vh; overflow: hidden; position: relative; flex-shrink: 0; background-color: #eae5e3; }
@@ -265,6 +340,16 @@ export default function App() {
         .date-display { flex-shrink: 0; }
         .case-description { font-family: degular, sans-serif; font-weight: 600; font-size: clamp(16px, 1.8vw, 28px); line-height: 1.35; opacity: 1; width: 100%; margin-top: 20px; }
         
+        /* NEW: CASE STUDY CONTENT BLOCKS */
+        .case-content-blocks { display: flex; flex-direction: column; gap: 60px; margin-top: 40px; padding-bottom: 100px; }
+        .meta-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; border-top: 1px solid rgba(234, 229, 227, 0.2); padding-top: 30px; }
+        .meta-item span { font-size: 12px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.5; display: block; margin-bottom: 5px; }
+        .meta-item p { font-size: 18px; line-height: 1.2; margin: 0; }
+        .full-image-block { width: 100%; border-radius: 8px; overflow: hidden; background: rgba(234, 229, 227, 0.05); }
+        .full-image-block img { width: 100%; height: auto; display: block; object-fit: cover; }
+        .half-image-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; }
+        .half-image-grid img { width: 100%; height: auto; display: block; border-radius: 8px; background: rgba(234, 229, 227, 0.05); }
+
         .back-bubble { position: fixed; bottom: 40px; left: 40px; width: 60px; height: 60px; background: rgba(234, 229, 227, 0.1); backdrop-filter: blur(15px); -webkit-backdrop-filter: blur(15px); border: 1px solid rgba(234, 229, 227, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 2000; transition: all 0.4s ease-out; opacity: 0; visibility: hidden; pointer-events: none; transform: scale(0.5); }
         .back-bubble.visible { opacity: 1; visibility: visible; pointer-events: auto; transform: scale(1); }
         .back-bubble span { color: #eae5e3; font-size: 24px; transform: rotate(180deg); line-height: 0; margin-top: -2px; }
@@ -284,6 +369,11 @@ export default function App() {
           .header-title { font-size: 80px; white-space: normal; padding-top: 0; line-height: 0.9; }
           .date-display { font-size: 40px; margin-top: 0px; align-self: flex-start; }
           .back-bubble { bottom: 30px; left: 30px; width: 50px; height: 50px; } 
+          
+          /* NEW: Responsive overrides for the blocks */
+          .case-content-blocks { gap: 40px; padding-bottom: 60px; }
+          .meta-grid { grid-template-columns: 1fr; gap: 20px; }
+          .half-image-grid { grid-template-columns: 1fr; gap: 20px; }
         }
       `}</style>
       <Routes><Route path="/" element={<MainScene />} /></Routes>
